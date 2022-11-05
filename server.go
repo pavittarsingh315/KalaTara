@@ -22,6 +22,7 @@ func main() {
 	app.Use(cors.New())
 	app.Use(logger.New())
 
+	configs.InitDatabase()
 	routes.InitRouter(app)
 
 	// Launch Application
