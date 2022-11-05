@@ -5,6 +5,7 @@ import (
 
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
+	"nerajima.com/NeraJima/models"
 )
 
 var (
@@ -22,7 +23,7 @@ func InitDatabase() {
 	log.Println("Database connection established...")
 	log.Println("Running migrations...")
 
-	if err = db.AutoMigrate(); err != nil {
+	if err = db.AutoMigrate(&models.User{}); err != nil {
 		log.Fatal("Error during migration...")
 		panic(err)
 	}
