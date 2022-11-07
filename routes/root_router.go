@@ -13,6 +13,8 @@ func InitRouter(app *fiber.App) {
 		return c.Status(fiber.StatusOK).SendString("🚀🚀🚀🚀 - PSJ 11-04-22 6:56 pm")
 	})
 
+	AuthRouter(api)
+
 	app.Use(func(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(
 			responses.NewErrorResponse(
