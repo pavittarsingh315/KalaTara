@@ -21,8 +21,8 @@ type User struct {
 	Role      string    `json:"role"`
 	Strikes   uint8     `json:"strikes"`
 	Birthday  time.Time `json:"birthday"`
-	LastLogin time.Time `json:"lastLogin"`
-	BanTill   time.Time `json:"banTill"`
+	LastLogin time.Time `json:"last_login"`
+	BanTill   time.Time `json:"ban_till"`
 	Profile   Profile
 }
 
