@@ -7,6 +7,12 @@ import (
 	"gorm.io/gorm"
 )
 
+// IMPORTANT: Use the link below when looking how to delete associated models: https://gorm.io/docs/associations.html#delete_with_select
+
+/*
+   The "Profile" field is for the "has one" relation between the User and Profile models
+*/
+
 type User struct {
 	Base
 	Name      string    `json:"name"`
@@ -17,6 +23,7 @@ type User struct {
 	Birthday  time.Time `json:"birthday"`
 	LastLogin time.Time `json:"lastLogin"`
 	BanTill   time.Time `json:"banTill"`
+	Profile   Profile
 }
 
 func (u *User) BeforeCreate(tx *gorm.DB) error {
