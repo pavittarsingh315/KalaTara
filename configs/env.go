@@ -15,3 +15,9 @@ func InitEnv() {
 		}
 	}
 }
+
+func EnvTokenSecrets() (access, refresh string) {
+	access = os.Getenv("ACCESS_TOKEN_SECRET")
+	refresh = os.Getenv("REFRESH_TOKEN_SECRET")
+	return
+}
