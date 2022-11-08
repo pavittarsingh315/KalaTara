@@ -7,6 +7,7 @@ require (
 	github.com/gofiber/helmet/v2 v2.2.18
 	github.com/google/uuid v1.3.0
 	github.com/joho/godotenv v1.4.0
+	github.com/rivo/uniseg v0.4.2
 	gorm.io/driver/sqlite v1.4.3
 	gorm.io/gorm v1.24.1
 )
@@ -20,7 +21,6 @@ require (
 	github.com/mattn/go-isatty v0.0.16 // indirect
 	github.com/mattn/go-runewidth v0.0.14 // indirect
 	github.com/mattn/go-sqlite3 v1.14.16 // indirect
-	github.com/rivo/uniseg v0.4.2 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasthttp v1.41.0 // indirect
 	github.com/valyala/tcplisten v1.0.0 // indirect
