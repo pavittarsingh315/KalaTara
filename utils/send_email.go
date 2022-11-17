@@ -7,7 +7,7 @@ import (
 	"nerajima.com/NeraJima/configs"
 )
 
-func SendRegistrationEmail(name, email string, code int) {
+func SendRegistrationEmail(name, email string, code string) {
 	var apiKey, emailSender string = configs.EnvSendGridKeyAndFrom()
 	var sendgridClient *sendgrid.Client = sendgrid.NewSendClient(apiKey)
 
@@ -32,7 +32,7 @@ func SendRegistrationEmail(name, email string, code int) {
 	_ = err
 }
 
-func SendPasswordResetEmail(name, email string, code int) {
+func SendPasswordResetEmail(name, email string, code string) {
 	var apiKey, emailSender string = configs.EnvSendGridKeyAndFrom()
 	var sendgridClient *sendgrid.Client = sendgrid.NewSendClient(apiKey)
 

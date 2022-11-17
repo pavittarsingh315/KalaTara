@@ -2,7 +2,6 @@ package authcontrollers
 
 import (
 	"fmt"
-	"strconv"
 	"strings"
 	"time"
 
@@ -99,9 +98,9 @@ func InitiateRegistration(c *fiber.Ctx) error {
 	}
 
 	// Create tempObj
-	code := utils.EncodeToInt(6)
+	code := utils.GenerateRandomCode(6)
 	newTempObj := models.TemporaryObject{
-		VerificationCode: code,
+		VerificationCode: utils.HashPassword(code),
 		Contact:          reqBody.Contact,
 	}
 	if err := configs.Database.Create(&newTempObj).Error; err != nil {
@@ -180,8 +179,7 @@ func FinalizeRegistration(c *fiber.Ctx) error {
 	}
 
 	// Check if user provided code is correct
-	code, _ := strconv.Atoi(reqBody.Code)
-	if tempObj.VerificationCode != code {
+	if !utils.VerifyPassword(tempObj.VerificationCode, reqBody.Code) {
 		return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": "Incorrect Code."}))
 	}
 
