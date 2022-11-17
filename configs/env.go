@@ -21,3 +21,16 @@ func EnvTokenSecrets() (access, refresh string) {
 	refresh = os.Getenv("REFRESH_TOKEN_SECRET")
 	return
 }
+
+func EnvSendGridKeyAndFrom() (key, sender string) {
+	key = os.Getenv("SENDGRID_API_KEY")
+	sender = os.Getenv("SENDGRID_SENDER")
+	return
+}
+
+func EnvTwilioIDKeyFrom() (id, token, from string) {
+	id = os.Getenv("TWILIO_ACCOUNT_SID")
+	token = os.Getenv("TWILIO_AUTH_TOKEN")
+	from = os.Getenv("TWILIO_FROM_NUMBER")
+	return
+}

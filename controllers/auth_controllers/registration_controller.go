@@ -109,10 +109,10 @@ func InitiateRegistration(c *fiber.Ctx) error {
 	}
 
 	if contactIsEmail {
-		// send email
+		utils.SendRegistrationEmail(reqBody.Name, reqBody.Contact, code)
 		return c.Status(fiber.StatusOK).JSON(responses.NewSuccessResponse(fiber.StatusOK, &fiber.Map{"data": "An email has been sent with a verification code."}))
 	} else {
-		// send text
+		utils.SendRegistrationText(code, reqBody.Contact)
 		return c.Status(fiber.StatusOK).JSON(responses.NewSuccessResponse(fiber.StatusOK, &fiber.Map{"data": "A text has been sent with a verification code."}))
 	}
 }
