@@ -85,13 +85,13 @@ func InitiateRegistration(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected error..."}))
 	}
 	if tempObj.Contact != "" { // contact field is not empty => temporary object with contact exists
-		unixTimeNow := time.Now().Unix()
-		unixTimeFiveMinAfterObjCreated := tempObj.CreatedAt.Add(time.Minute * 5).Unix()
-		if unixTimeFiveMinAfterObjCreated <= unixTimeNow { // tempObj is expired
+		if tempObj.IsExpired() {
 			if err := configs.Database.Delete(&tempObj).Error; err != nil {
 				return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Error. Please try again."}))
 			}
-		} else { // tempObj is NOT expired
+		} else {
+			unixTimeNow := time.Now().Unix()
+			unixTimeFiveMinAfterObjCreated := tempObj.CreatedAt.Add(time.Minute * 5).Unix()
 			message := fmt.Sprintf("Looks like this contact is part of another registration process. Try again in %s.", utils.SecondsToString(unixTimeFiveMinAfterObjCreated-unixTimeNow))
 			return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": message}))
 		}
