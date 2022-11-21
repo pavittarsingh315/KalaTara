@@ -14,6 +14,7 @@ func InitRouter(app *fiber.App) {
 	})
 
 	AuthRouter(api)
+	ProfileRouter(api)
 
 	app.Use(func(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(
