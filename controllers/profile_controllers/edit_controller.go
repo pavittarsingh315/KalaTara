@@ -41,7 +41,7 @@ func EditUsername(c *fiber.Ctx) error {
 
 	// Check if username is taken
 	var profile models.Profile
-	if err := configs.Database.Find(&profile, "username = ?", reqBody.Username).Error; err != nil {
+	if err := configs.Database.Model(&models.Profile{}).Find(&profile, "username = ?", reqBody.Username).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected error..."}))
 	}
 	if profile.Username != "" { // username field is not empty => profile with username exists

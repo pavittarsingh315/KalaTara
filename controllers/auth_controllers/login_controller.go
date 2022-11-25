@@ -31,7 +31,7 @@ func Login(c *fiber.Ctx) error {
 
 	// Check if user exists
 	var user models.User
-	if err := configs.Database.Preload("Profile").Find(&user, "contact = ?", reqBody.Contact).Error; err != nil {
+	if err := configs.Database.Model(&models.User{}).Preload("Profile").Find(&user, "contact = ?", reqBody.Contact).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected error..."}))
 	}
 	if user.Contact == "" || user.Profile.Username == "" { // (contact field is empty => user doesn't exist || username field is empty => profile doesn't exist) => Account is not found
@@ -103,7 +103,7 @@ func TokenLogin(c *fiber.Ctx) error {
 
 	// Check if user exists
 	var user models.User
-	if err := configs.Database.Preload("Profile").Find(&user, "id = ?", accessBody.UserId).Error; err != nil {
+	if err := configs.Database.Model(&models.User{}).Preload("Profile").Find(&user, "id = ?", accessBody.UserId).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected error..."}))
 	}
 	if user.Contact == "" || user.Profile.Username == "" { // (contact field is empty => user doesn't exist || username field is empty => profile doesn't exist) => Account is not found

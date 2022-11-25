@@ -58,7 +58,7 @@ func InitiateRegistration(c *fiber.Ctx) error {
 
 	// Check if username is taken
 	var profile models.Profile
-	if err := configs.Database.Find(&profile, "username = ?", reqBody.Username).Error; err != nil {
+	if err := configs.Database.Model(&models.Profile{}).Find(&profile, "username = ?", reqBody.Username).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected error..."}))
 	}
 	if profile.Username != "" { // username field is not empty => profile with username exists
@@ -68,7 +68,7 @@ func InitiateRegistration(c *fiber.Ctx) error {
 	// Check if contact is taken
 	contactIsEmail := utils.ValidateEmail(reqBody.Contact)
 	var user models.User
-	if err := configs.Database.Find(&user, "contact = ?", reqBody.Contact).Error; err != nil {
+	if err := configs.Database.Model(&models.User{}).Find(&user, "contact = ?", reqBody.Contact).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected error..."}))
 	}
 	if user.Contact != "" { // contact field is not empty => user with contact exists
@@ -81,12 +81,12 @@ func InitiateRegistration(c *fiber.Ctx) error {
 
 	// Check if registration is already initiated
 	var tempObj models.TemporaryObject
-	if err := configs.Database.Find(&tempObj, "contact = ?", reqBody.Contact).Error; err != nil {
+	if err := configs.Database.Model(&models.TemporaryObject{}).Find(&tempObj, "contact = ?", reqBody.Contact).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected error..."}))
 	}
 	if tempObj.Contact != "" { // contact field is not empty => temporary object with contact exists
 		if tempObj.IsExpired() {
-			if err := configs.Database.Delete(&tempObj).Error; err != nil {
+			if err := configs.Database.Model(&models.TemporaryObject{}).Delete(&tempObj).Error; err != nil {
 				return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Error. Please try again."}))
 			}
 		} else {
@@ -103,7 +103,7 @@ func InitiateRegistration(c *fiber.Ctx) error {
 		VerificationCode: utils.HashPassword(code),
 		Contact:          reqBody.Contact,
 	}
-	if err := configs.Database.Create(&newTempObj).Error; err != nil {
+	if err := configs.Database.Model(&models.TemporaryObject{}).Create(&newTempObj).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected error..."}))
 	}
 
@@ -162,7 +162,7 @@ func FinalizeRegistration(c *fiber.Ctx) error {
 
 	// Check if username is taken
 	var profile models.Profile
-	if err := configs.Database.Find(&profile, "username = ?", reqBody.Username).Error; err != nil {
+	if err := configs.Database.Model(&models.Profile{}).Find(&profile, "username = ?", reqBody.Username).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected error..."}))
 	}
 	if profile.Username != "" { // username field is not empty => profile with username exists
@@ -171,7 +171,7 @@ func FinalizeRegistration(c *fiber.Ctx) error {
 
 	// Get temporary object
 	var tempObj models.TemporaryObject
-	if err := configs.Database.Find(&tempObj, "contact = ?", reqBody.Contact).Error; err != nil {
+	if err := configs.Database.Model(&models.TemporaryObject{}).Find(&tempObj, "contact = ?", reqBody.Contact).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected error..."}))
 	}
 	if tempObj.Contact == "" { // contact field is empty => tempObj does not exist anymore
@@ -194,7 +194,7 @@ func FinalizeRegistration(c *fiber.Ctx) error {
 		LastLogin: time.Now(),
 		BanTill:   time.Now(),
 	}
-	if err := configs.Database.Create(&newUser).Error; err != nil {
+	if err := configs.Database.Model(&models.User{}).Create(&newUser).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Error. Please try again."}))
 	}
 
@@ -211,12 +211,12 @@ func FinalizeRegistration(c *fiber.Ctx) error {
 		WhitelistSize: 0,
 		Birthday:      reqBody.Birthday,
 	}
-	if err := configs.Database.Create(&newProfile).Error; err != nil {
+	if err := configs.Database.Model(&models.Profile{}).Create(&newProfile).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Error. Please try again."}))
 	}
 
 	// Delete temporary object
-	if err := configs.Database.Delete(&tempObj).Error; err != nil {
+	if err := configs.Database.Model(&models.TemporaryObject{}).Delete(&tempObj).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Error. Please try again."}))
 	}
 

@@ -29,7 +29,7 @@ func RequestPasswordReset(c *fiber.Ctx) error {
 
 	// Check if account exists
 	var user models.User
-	if err := configs.Database.Find(&user, "contact = ?", reqBody.Contact).Error; err != nil {
+	if err := configs.Database.Model(&models.User{}).Find(&user, "contact = ?", reqBody.Contact).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected error..."}))
 	}
 	if user.Contact == "" { // contact field is empty => user with contact doesn't exist
@@ -38,12 +38,12 @@ func RequestPasswordReset(c *fiber.Ctx) error {
 
 	// Check if reset is already initiated
 	var tempObj models.TemporaryObject
-	if err := configs.Database.Find(&tempObj, "contact = ?", reqBody.Contact).Error; err != nil {
+	if err := configs.Database.Model(&models.TemporaryObject{}).Find(&tempObj, "contact = ?", reqBody.Contact).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected error..."}))
 	}
 	if tempObj.Contact != "" { // contact field is not empty => temporary object with contact exists
 		if tempObj.IsExpired() {
-			if err := configs.Database.Delete(&tempObj).Error; err != nil {
+			if err := configs.Database.Model(&models.TemporaryObject{}).Delete(&tempObj).Error; err != nil {
 				return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Error. Please try again."}))
 			}
 		} else {
@@ -57,7 +57,7 @@ func RequestPasswordReset(c *fiber.Ctx) error {
 		VerificationCode: utils.HashPassword(code),
 		Contact:          reqBody.Contact,
 	}
-	if err := configs.Database.Create(&newTempObj).Error; err != nil {
+	if err := configs.Database.Model(&models.TemporaryObject{}).Create(&newTempObj).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected error..."}))
 	}
 
@@ -91,7 +91,7 @@ func ConfirmResetCode(c *fiber.Ctx) error {
 
 	// Check if reset code exists
 	var tempObj models.TemporaryObject
-	if err := configs.Database.Find(&tempObj, "contact = ?", reqBody.Contact).Error; err != nil {
+	if err := configs.Database.Model(&models.TemporaryObject{}).Find(&tempObj, "contact = ?", reqBody.Contact).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected error..."}))
 	}
 	if tempObj.Contact == "" { // contact field is empty => temporary object with contact doesn't exist
@@ -99,7 +99,7 @@ func ConfirmResetCode(c *fiber.Ctx) error {
 	} else {
 		// If tempObj is expired, delete it
 		if tempObj.IsExpired() {
-			if err := configs.Database.Delete(&tempObj).Error; err != nil {
+			if err := configs.Database.Model(&models.TemporaryObject{}).Delete(&tempObj).Error; err != nil {
 				return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Error. Please try again."}))
 			}
 			return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": "Code has expired. Please restart the reset process."}))
@@ -139,7 +139,7 @@ func ConfirmPasswordReset(c *fiber.Ctx) error {
 
 	// Check if reset code exists
 	var tempObj models.TemporaryObject
-	if err := configs.Database.Find(&tempObj, "contact = ?", reqBody.Contact).Error; err != nil {
+	if err := configs.Database.Model(&models.TemporaryObject{}).Find(&tempObj, "contact = ?", reqBody.Contact).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected error..."}))
 	}
 	if tempObj.Contact == "" { // contact field is empty => temporary object with contact doesn't exist
@@ -147,7 +147,7 @@ func ConfirmPasswordReset(c *fiber.Ctx) error {
 	} else {
 		// If tempObj is expired, delete it
 		if tempObj.IsExpired() {
-			if err := configs.Database.Delete(&tempObj).Error; err != nil {
+			if err := configs.Database.Model(&models.TemporaryObject{}).Delete(&tempObj).Error; err != nil {
 				return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Error. Please try again."}))
 			}
 			return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": "Code has expired. Please restart the reset process."}))
@@ -161,7 +161,7 @@ func ConfirmPasswordReset(c *fiber.Ctx) error {
 
 	// Check if account exists
 	var user models.User
-	if err := configs.Database.Find(&user, "contact = ?", reqBody.Contact).Error; err != nil {
+	if err := configs.Database.Model(&models.User{}).Find(&user, "contact = ?", reqBody.Contact).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected error..."}))
 	}
 	if user.Contact == "" { // contact field is empty => user with contact doesn't exist
@@ -178,7 +178,7 @@ func ConfirmPasswordReset(c *fiber.Ctx) error {
 	}
 
 	// Delete tempObj
-	if err := configs.Database.Delete(&tempObj).Error; err != nil {
+	if err := configs.Database.Model(&models.TemporaryObject{}).Delete(&tempObj).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Error. Please try again."}))
 	}
 
