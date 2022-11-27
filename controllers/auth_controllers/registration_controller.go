@@ -200,16 +200,13 @@ func FinalizeRegistration(c *fiber.Ctx) error {
 
 	// Create Profile
 	newProfile := models.Profile{
-		UserId:        newUser.Id,
-		Username:      reqBody.Username,
-		Name:          reqBody.Name,
-		Bio:           "🚀🚀🚀🚀🚀🚀🚀🚀",
-		Avatar:        "https://nerajima.s3.us-west-1.amazonaws.com/default.jpg",
-		MiniAvatar:    "https://nerajima.s3.us-west-1.amazonaws.com/default.jpg",
-		NumFollowers:  0,
-		NumFollowing:  0,
-		WhitelistSize: 0,
-		Birthday:      reqBody.Birthday,
+		UserId:     newUser.Id,
+		Username:   reqBody.Username,
+		Name:       reqBody.Name,
+		Bio:        "🚀🚀🚀🚀🚀🚀🚀🚀",
+		Avatar:     "https://nerajima.s3.us-west-1.amazonaws.com/default.jpg",
+		MiniAvatar: "https://nerajima.s3.us-west-1.amazonaws.com/default.jpg",
+		Birthday:   reqBody.Birthday,
 	}
 	if err := configs.Database.Model(&models.Profile{}).Create(&newProfile).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Error. Please try again."}))
