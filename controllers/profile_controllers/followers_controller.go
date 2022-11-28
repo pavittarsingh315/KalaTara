@@ -93,7 +93,7 @@ func GetFollowers(c *fiber.Ctx) error {
 
 	// Get followers(paginated)
 	var followers []models.MiniProfile
-	if err := configs.Database.Model(&profile).Offset(offset).Limit(limit).Association("Followers").Find(&followers); err != nil {
+	if err := configs.Database.Model(&profile).Offset(offset).Limit(limit).Order("profile_followers.created_at DESC").Association("Followers").Find(&followers); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected error..."}))
 	}
 
