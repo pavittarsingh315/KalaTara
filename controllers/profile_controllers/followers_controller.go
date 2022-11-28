@@ -46,11 +46,35 @@ func FollowAUser(c *fiber.Ctx) error {
 }
 
 func UnfollowAUser(c *fiber.Ctx) error {
-	return c.Status(fiber.StatusOK).JSON(responses.NewSuccessResponse(fiber.StatusOK, &fiber.Map{"data": "Unfollow a user"}))
+	var reqProfile models.Profile = c.Locals("profile").(models.Profile)
+
+	if reqProfile.Id == c.Params("profileId") {
+		return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": "You cannot unfollow yourself."}))
+	}
+
+	// Delete followers object
+	var followerObj models.ProfileFollower
+	if err := configs.Database.Table("profile_followers").Delete(&followerObj, "profile_id = ? AND follower_id = ?", c.Params("profileId"), reqProfile.Id).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Error. Please try again."}))
+	}
+
+	return c.Status(fiber.StatusOK).JSON(responses.NewSuccessResponse(fiber.StatusOK, &fiber.Map{"data": "User has been unfollowed."}))
 }
 
 func RemoveAFollower(c *fiber.Ctx) error {
-	return c.Status(fiber.StatusOK).JSON(responses.NewSuccessResponse(fiber.StatusOK, &fiber.Map{"data": "Remove a follower"}))
+	var reqProfile models.Profile = c.Locals("profile").(models.Profile)
+
+	if reqProfile.Id == c.Params("profileId") {
+		return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": "You cannot remove yourself."}))
+	}
+
+	// Delete followers object
+	var followerObj models.ProfileFollower
+	if err := configs.Database.Table("profile_followers").Delete(&followerObj, "profile_id = ? AND follower_id = ?", reqProfile.Id, c.Params("profileId")).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Error. Please try again."}))
+	}
+
+	return c.Status(fiber.StatusOK).JSON(responses.NewSuccessResponse(fiber.StatusOK, &fiber.Map{"data": "Follower has been removed."}))
 }
 
 func GetFollowers(c *fiber.Ctx) error {
