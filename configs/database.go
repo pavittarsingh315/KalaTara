@@ -23,7 +23,7 @@ func InitDatabase() {
 	log.Println("Database connection established...")
 	log.Println("Running migrations...")
 
-	if err = db.SetupJoinTable(&models.Profile{}, "Followers", &models.Follower{}); err != nil {
+	if err = db.SetupJoinTable(&models.Profile{}, "Followers", &models.ProfileFollower{}); err != nil {
 		log.Fatal("Error during join table setup...")
 		panic(err)
 	}

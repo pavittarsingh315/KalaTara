@@ -20,10 +20,10 @@ type Profile struct {
 	Avatar     string     `json:"avatar"`
 	MiniAvatar string     `json:"mini_avatar"`
 	Birthday   time.Time  `json:"birthday"`
-	Followers  []*Profile `json:"followers" gorm:"many2many:followers"`
+	Followers  []*Profile `json:"followers" gorm:"many2many:profile_followers"`
 }
 
-type Follower struct {
+type ProfileFollower struct {
 	ProfileId  string    `json:"followed_id" gorm:"primary_key;type:uuid;<-:create"` // allow read and create (not update)
 	FollowerId string    `json:"follower_id" gorm:"primary_key;type:uuid;<-:create"` // allow read and create (not update)
 	CreatedAt  time.Time `json:"created_at" gorm:"<-:create"`                        // allow read and create (not update)
