@@ -23,8 +23,19 @@ type Profile struct {
 	Followers  []*Profile `json:"followers" gorm:"many2many:profile_followers"`
 }
 
+// This is a custom junction table for the self-referencing many-to-many relationship between a Profile and a Follower
 type ProfileFollower struct {
 	ProfileId  string    `json:"followed_id" gorm:"primary_key;type:uuid;<-:create"` // allow read and create (not update)
 	FollowerId string    `json:"follower_id" gorm:"primary_key;type:uuid;<-:create"` // allow read and create (not update)
 	CreatedAt  time.Time `json:"created_at" gorm:"<-:create"`                        // allow read and create (not update)
 }
+
+// IMPORTANT: Struct is meant purely for API responses, not any database interactions
+type MiniProfile struct {
+	Id         string `json:"id"`
+	Username   string `json:"username"`
+	Name       string `json:"name"`
+	MiniAvatar string `json:"mini_avatar"`
+}
+
+// TODO: Use this https://gorm.io/docs/associations.html#Find-Associations and https://gorm.io/docs/associations.html#Count-Associations to get #followers/#following/#whitelist

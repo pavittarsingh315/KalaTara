@@ -1,6 +1,7 @@
 package profilecontrollers
 
 import (
+	"math"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -78,7 +79,34 @@ func RemoveAFollower(c *fiber.Ctx) error {
 }
 
 func GetFollowers(c *fiber.Ctx) error {
-	return c.Status(fiber.StatusOK).JSON(responses.NewSuccessResponse(fiber.StatusOK, &fiber.Map{"data": "Get followers"}))
+	var page int = c.Locals("page").(int)
+	var limit int = c.Locals("limit").(int)
+	var offset int = c.Locals("offset").(int)
+
+	var profile models.Profile
+	if err := configs.Database.Model(&models.Profile{}).Find(&profile, "id = ?", c.Params("profileId")).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected error..."}))
+	}
+	if profile.Id == "" { // Id field is empty => user does not exist
+		return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": "This user does not exist."}))
+	}
+
+	// Get followers(paginated)
+	var followers []models.MiniProfile
+	if err := configs.Database.Model(&profile).Offset(offset).Limit(limit).Association("Followers").Find(&followers); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected error..."}))
+	}
+
+	// Get total number of followers
+	numFollowers := configs.Database.Model(&profile).Association("Followers").Count()
+
+	return c.Status(fiber.StatusOK).JSON(responses.NewSuccessResponse(fiber.StatusOK, &fiber.Map{
+		"data": &fiber.Map{
+			"current_page": page,
+			"last_page":    int(math.Ceil(float64(numFollowers) / float64(limit))),
+			"data":         followers,
+		},
+	}))
 }
 
 func GetFollowing(c *fiber.Ctx) error {

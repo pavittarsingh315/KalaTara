@@ -23,6 +23,6 @@ func followersRouter(group fiber.Router) {
 	router.Post("/follow/:profileId", middleware.UserAuthHandler, profilecontrollers.FollowAUser)
 	router.Delete("/unfollow/:profileId", middleware.UserAuthHandler, profilecontrollers.UnfollowAUser)
 	router.Delete("/remove/:profileId", middleware.UserAuthHandler, profilecontrollers.RemoveAFollower)
-	router.Get("/getfollowers/:profileId", middleware.UserAuthHandler, profilecontrollers.GetFollowers)
-	router.Get("/getfollowing/:profileId", middleware.UserAuthHandler, profilecontrollers.GetFollowing)
+	router.Get("/getfollowers/:profileId", middleware.UserAuthHandler, middleware.PaginationHandler, profilecontrollers.GetFollowers)
+	router.Get("/getfollowing/:profileId", middleware.UserAuthHandler, middleware.PaginationHandler, profilecontrollers.GetFollowing)
 }
