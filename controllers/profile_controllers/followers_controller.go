@@ -124,8 +124,13 @@ func GetFollowing(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": "This user does not exist."}))
 	}
 
+	/*
+	   IMPORTANT:
+	      To build the raw queries below, I used the default gorm logger in Info mode to inspect the queries made by the GetFollowers endpoint when gettings the followers list and numfollowers.
+	      I then used those queries and altered them to build the queries seen below.
+	*/
+
 	// Get following(paginated)
-	// SELECT `profiles`.`id`,`profiles`.`created_at`,`profiles`.`updated_at`,`profiles`.`user_id`,`profiles`.`username`,`profiles`.`name`,`profiles`.`bio`,`profiles`.`avatar`,`profiles`.`mini_avatar`,`profiles`.`birthday` FROM `profiles` JOIN `profile_followers` ON `profile_followers`.`follower_id` = `profiles`.`id` AND `profile_followers`.`profile_id` = "b6738287-ff7c-498b-bcae-31eeb6ea0e26" WHERE username LIKE "%dark%" OR name LIKE "%dark%" ORDER BY profile_followers.created_at DESC LIMIT 10
 	regexMatch := fmt.Sprintf("%%%s%%", c.Query("filter")) // for more information on regex matching in sql, visit https://www.freecodecamp.org/news/sql-contains-string-sql-regex-example-query/
 	query := fmt.Sprintf("SELECT profiles.id, profiles.created_at, profiles.updated_at, profiles.user_id, profiles.username, profiles.name, profiles.bio, profiles.avatar, profiles.mini_avatar, profiles.birthday FROM profiles JOIN profile_followers ON profile_followers.follower_id = \"%s\" AND profile_followers.profile_id = profiles.id WHERE username LIKE \"%s\" OR name LIKE \"%s\" ORDER BY profile_followers.created_at DESC LIMIT %d OFFSET %d", c.Params("profileId"), regexMatch, regexMatch, limit, offset)
 	var following []models.MiniProfile
