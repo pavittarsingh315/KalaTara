@@ -9,18 +9,21 @@ import (
    UserId is the foreignKey to the user and the syntax has to match: <OwnerModelName><OwnerModelPrimaryKeyName>
 
    The Profile has a many to many relation with itself for 1 field: followers => https://gorm.io/docs/many_to_many.html#Self-Referential-Many2Many
+
+   The "SearchHistory" field is for the "has one" relation between the Profile and SearchHistory models
 */
 
 type Profile struct {
 	Base
-	UserId     string     `json:"user_id"`
-	Username   string     `json:"username" gorm:"unique"`
-	Name       string     `json:"name"`
-	Bio        string     `json:"bio" gorm:"default:🚀🚀🚀🚀🚀🚀🚀🚀"`
-	Avatar     string     `json:"avatar"`
-	MiniAvatar string     `json:"mini_avatar"`
-	Birthday   time.Time  `json:"birthday"`
-	Followers  []*Profile `json:"followers" gorm:"many2many:profile_followers"`
+	UserId        string        `json:"user_id"`
+	Username      string        `json:"username" gorm:"unique"`
+	Name          string        `json:"name"`
+	Bio           string        `json:"bio" gorm:"default:🚀🚀🚀🚀🚀🚀🚀🚀"`
+	Avatar        string        `json:"avatar"`
+	MiniAvatar    string        `json:"mini_avatar"`
+	Birthday      time.Time     `json:"birthday"`
+	Followers     []*Profile    `json:"followers" gorm:"many2many:profile_followers"`
+	SearchHistory SearchHistory `json:"search_history"`
 }
 
 // This is a custom junction table for the self-referencing many-to-many relationship between a Profile and a Follower
