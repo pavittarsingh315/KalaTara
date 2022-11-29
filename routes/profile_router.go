@@ -15,6 +15,7 @@ func ProfileRouter(group fiber.Router) {
 	router.Put("/edit/avatar", middleware.UserAuthHandler, profilecontrollers.EditAvatar)
 
 	followersRouter(router)
+	searchHistoryRouter(router)
 }
 
 func followersRouter(group fiber.Router) {
@@ -23,6 +24,15 @@ func followersRouter(group fiber.Router) {
 	router.Post("/follow/:profileId", middleware.UserAuthHandler, profilecontrollers.FollowAUser)
 	router.Delete("/unfollow/:profileId", middleware.UserAuthHandler, profilecontrollers.UnfollowAUser)
 	router.Delete("/remove/:profileId", middleware.UserAuthHandler, profilecontrollers.RemoveAFollower)
-	router.Get("/getfollowers/:profileId", middleware.UserAuthHandler, middleware.PaginationHandler, profilecontrollers.GetFollowers)
-	router.Get("/getfollowing/:profileId", middleware.UserAuthHandler, middleware.PaginationHandler, profilecontrollers.GetFollowing)
+	router.Get("/get-followers/:profileId", middleware.UserAuthHandler, middleware.PaginationHandler, profilecontrollers.GetFollowers)
+	router.Get("/get-following/:profileId", middleware.UserAuthHandler, middleware.PaginationHandler, profilecontrollers.GetFollowing)
+}
+
+func searchHistoryRouter(group fiber.Router) {
+	router := group.Group("/search-history") // domain/api/profile/search-history
+
+	router.Post("/add", middleware.UserAuthHandler, profilecontrollers.AddToSearchHistory)
+	router.Delete("/remove/:searchHistoryId", middleware.UserAuthHandler, profilecontrollers.RemoveFromSearchHistory)
+	router.Delete("/clear", middleware.UserAuthHandler, profilecontrollers.ClearSearchHistory)
+	router.Get("/get", middleware.UserAuthHandler, profilecontrollers.GetSearchHistory)
 }

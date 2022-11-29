@@ -133,7 +133,7 @@ func GetFollowing(c *fiber.Ctx) error {
 	// Get following(paginated)
 	regexMatch := fmt.Sprintf("%%%s%%", c.Query("filter")) // for more information on regex matching in sql, visit https://www.freecodecamp.org/news/sql-contains-string-sql-regex-example-query/
 	query := fmt.Sprintf("SELECT profiles.id, profiles.created_at, profiles.updated_at, profiles.user_id, profiles.username, profiles.name, profiles.bio, profiles.avatar, profiles.mini_avatar, profiles.birthday FROM profiles JOIN profile_followers ON profile_followers.follower_id = \"%s\" AND profile_followers.profile_id = profiles.id WHERE username LIKE \"%s\" OR name LIKE \"%s\" ORDER BY profile_followers.created_at DESC LIMIT %d OFFSET %d", c.Params("profileId"), regexMatch, regexMatch, limit, offset)
-	var following []models.MiniProfile
+	var following = []models.MiniProfile{}
 	if err := configs.Database.Raw(query).Scan(&following).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected error..."}))
 	}
