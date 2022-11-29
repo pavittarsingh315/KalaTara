@@ -1,6 +1,7 @@
 package profilecontrollers
 
 import (
+	"fmt"
 	"math"
 	"time"
 
@@ -92,13 +93,14 @@ func GetFollowers(c *fiber.Ctx) error {
 	}
 
 	// Get followers(paginated)
+	regexMatch := fmt.Sprintf("%%%s%%", c.Query("filter")) // for more information on regex matching in sql, visit https://www.freecodecamp.org/news/sql-contains-string-sql-regex-example-query/
 	var followers []models.MiniProfile
-	if err := configs.Database.Model(&profile).Offset(offset).Limit(limit).Order("profile_followers.created_at DESC").Association("Followers").Find(&followers); err != nil {
+	if err := configs.Database.Model(&profile).Offset(offset).Limit(limit).Order("profile_followers.created_at DESC").Where("username LIKE ? OR name LIKE ?", regexMatch, regexMatch).Association("Followers").Find(&followers); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected error..."}))
 	}
 
 	// Get total number of followers
-	numFollowers := configs.Database.Model(&profile).Association("Followers").Count()
+	numFollowers := configs.Database.Model(&profile).Where("username LIKE ? OR name LIKE ?", regexMatch, regexMatch).Association("Followers").Count()
 
 	return c.Status(fiber.StatusOK).JSON(responses.NewSuccessResponse(fiber.StatusOK, &fiber.Map{
 		"data": &fiber.Map{
@@ -110,5 +112,39 @@ func GetFollowers(c *fiber.Ctx) error {
 }
 
 func GetFollowing(c *fiber.Ctx) error {
-	return c.Status(fiber.StatusOK).JSON(responses.NewSuccessResponse(fiber.StatusOK, &fiber.Map{"data": "Get following"}))
+	var page int = c.Locals("page").(int)
+	var limit int = c.Locals("limit").(int)
+	var offset int = c.Locals("offset").(int)
+
+	var profile models.Profile
+	if err := configs.Database.Model(&models.Profile{}).Find(&profile, "id = ?", c.Params("profileId")).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected error..."}))
+	}
+	if profile.Id == "" { // Id field is empty => user does not exist
+		return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": "This user does not exist."}))
+	}
+
+	// Get following(paginated)
+	// SELECT `profiles`.`id`,`profiles`.`created_at`,`profiles`.`updated_at`,`profiles`.`user_id`,`profiles`.`username`,`profiles`.`name`,`profiles`.`bio`,`profiles`.`avatar`,`profiles`.`mini_avatar`,`profiles`.`birthday` FROM `profiles` JOIN `profile_followers` ON `profile_followers`.`follower_id` = `profiles`.`id` AND `profile_followers`.`profile_id` = "b6738287-ff7c-498b-bcae-31eeb6ea0e26" WHERE username LIKE "%dark%" OR name LIKE "%dark%" ORDER BY profile_followers.created_at DESC LIMIT 10
+	regexMatch := fmt.Sprintf("%%%s%%", c.Query("filter")) // for more information on regex matching in sql, visit https://www.freecodecamp.org/news/sql-contains-string-sql-regex-example-query/
+	query := fmt.Sprintf("SELECT profiles.id, profiles.created_at, profiles.updated_at, profiles.user_id, profiles.username, profiles.name, profiles.bio, profiles.avatar, profiles.mini_avatar, profiles.birthday FROM profiles JOIN profile_followers ON profile_followers.follower_id = \"%s\" AND profile_followers.profile_id = profiles.id WHERE username LIKE \"%s\" OR name LIKE \"%s\" ORDER BY profile_followers.created_at DESC LIMIT %d OFFSET %d", c.Params("profileId"), regexMatch, regexMatch, limit, offset)
+	var following []models.MiniProfile
+	if err := configs.Database.Raw(query).Scan(&following).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected error..."}))
+	}
+
+	// Get total number of following
+	var numFollowing int
+	query2 := fmt.Sprintf("SELECT count(*) FROM profiles JOIN profile_followers on profile_followers.follower_id = \"%s\" AND profile_followers.profile_id = profiles.id WHERE username LIKE \"%s\" OR name LIKE \"%s\"", c.Params("profileId"), regexMatch, regexMatch)
+	if err := configs.Database.Raw(query2).Scan(&numFollowing).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected error..."}))
+	}
+
+	return c.Status(fiber.StatusOK).JSON(responses.NewSuccessResponse(fiber.StatusOK, &fiber.Map{
+		"data": &fiber.Map{
+			"current_page": page,
+			"last_page":    int(math.Ceil(float64(numFollowing) / float64(limit))),
+			"data":         following,
+		},
+	}))
 }
