@@ -3,7 +3,7 @@ package configs
 import (
 	"log"
 
-	"gorm.io/driver/sqlite"
+	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 	"nerajima.com/NeraJima/models"
 )
@@ -13,7 +13,7 @@ var (
 )
 
 func InitDatabase() {
-	db, err := gorm.Open(sqlite.Open("dev.db"), &gorm.Config{})
+	db, err := gorm.Open(mysql.Open(EnvMySqlDNS()), &gorm.Config{})
 
 	if err != nil {
 		log.Fatal("Error connecting to database...")

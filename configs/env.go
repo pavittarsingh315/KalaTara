@@ -34,3 +34,8 @@ func EnvTwilioIDKeyFrom() (id, token, from string) {
 	from = os.Getenv("TWILIO_FROM_NUMBER")
 	return
 }
+
+func EnvMySqlDNS() (dns string) {
+	dns = os.Getenv("MYSQL_DNS")
+	return
+}
