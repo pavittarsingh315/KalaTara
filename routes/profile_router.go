@@ -9,13 +9,19 @@ import (
 func ProfileRouter(group fiber.Router) {
 	router := group.Group("/profile") // domain/api/profile
 
-	router.Put("/edit/username", middleware.UserAuthHandler, profilecontrollers.EditUsername)
-	router.Put("/edit/name", middleware.UserAuthHandler, profilecontrollers.EditName)
-	router.Put("/edit/bio", middleware.UserAuthHandler, profilecontrollers.EditBio)
-	router.Put("/edit/avatar", middleware.UserAuthHandler, profilecontrollers.EditAvatar)
-
+	editRouter(router)
 	followersRouter(router)
 	searchHistoryRouter(router)
+	subscribersRouter(router)
+}
+
+func editRouter(group fiber.Router) {
+	router := group.Group("/edit") // domain/api/profile/edit
+
+	router.Put("/username", middleware.UserAuthHandler, profilecontrollers.EditUsername)
+	router.Put("/name", middleware.UserAuthHandler, profilecontrollers.EditName)
+	router.Put("/bio", middleware.UserAuthHandler, profilecontrollers.EditBio)
+	router.Put("/avatar", middleware.UserAuthHandler, profilecontrollers.EditAvatar)
 }
 
 func followersRouter(group fiber.Router) {
@@ -35,4 +41,29 @@ func searchHistoryRouter(group fiber.Router) {
 	router.Delete("/remove/:searchHistoryId", middleware.UserAuthHandler, profilecontrollers.RemoveFromSearchHistory)
 	router.Delete("/clear", middleware.UserAuthHandler, profilecontrollers.ClearSearchHistory)
 	router.Get("/get", middleware.UserAuthHandler, profilecontrollers.GetSearchHistory)
+}
+
+func subscribersRouter(group fiber.Router) {
+	router := group.Group("/subscribers") // domain/api/profile/subscribers
+
+	router.Post("/invite/:profileId", middleware.UserAuthHandler)
+	router.Delete("/invite/cancel/:inviteId", middleware.UserAuthHandler)
+	router.Put("/invite/accept/:inviteId", middleware.UserAuthHandler)
+	router.Delete("/invite/decline/:inviteId", middleware.UserAuthHandler)
+
+	router.Post("/request/:profileId", middleware.UserAuthHandler)
+	router.Delete("/request/cancel/:requestId", middleware.UserAuthHandler)
+	router.Put("/request/accept/:requestId", middleware.UserAuthHandler)
+	router.Delete("/request/decline/:requestId", middleware.UserAuthHandler)
+
+	router.Delete("/remove/:profileId", middleware.UserAuthHandler)
+	router.Delete("/unsubscribe/:profileId", middleware.UserAuthHandler)
+
+	router.Get("/invites/sent/get", middleware.UserAuthHandler, middleware.PaginationHandler)
+	router.Get("/invites/received/get", middleware.UserAuthHandler, middleware.PaginationHandler)
+	router.Get("/requests/sent/get", middleware.UserAuthHandler, middleware.PaginationHandler)
+	router.Get("/requests/received/get", middleware.UserAuthHandler, middleware.PaginationHandler)
+
+	router.Get("/get", middleware.UserAuthHandler, middleware.PaginationHandler)
+	router.Get("/subscriptions/get", middleware.UserAuthHandler, middleware.PaginationHandler)
 }

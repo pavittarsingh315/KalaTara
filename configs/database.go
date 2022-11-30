@@ -28,6 +28,11 @@ func InitDatabase() {
 		panic(err)
 	}
 
+	if err = db.SetupJoinTable(&models.Profile{}, "Subscribers", &models.ProfileSubscriber{}); err != nil {
+		log.Fatal("Error during join table setup...")
+		panic(err)
+	}
+
 	if err = db.AutoMigrate(&models.TemporaryObject{}, &models.User{}, &models.Profile{}, &models.SearchHistory{}); err != nil {
 		log.Fatal("Error during migration...")
 		panic(err)
