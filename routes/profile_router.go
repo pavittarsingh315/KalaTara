@@ -46,10 +46,10 @@ func searchHistoryRouter(group fiber.Router) {
 func subscribersRouter(group fiber.Router) {
 	router := group.Group("/subscribers") // domain/api/profile/subscribers
 
-	router.Post("/invite/:profileId", middleware.UserAuthHandler)
-	router.Delete("/invite/cancel/:inviteId", middleware.UserAuthHandler)
-	router.Put("/invite/accept/:inviteId", middleware.UserAuthHandler)
-	router.Delete("/invite/decline/:inviteId", middleware.UserAuthHandler)
+	router.Post("/invite/:profileId", middleware.UserAuthHandler, profilecontrollers.InviteToSubscribersList)
+	router.Delete("/invite/cancel/:profileId", middleware.UserAuthHandler, profilecontrollers.CancelInviteToSubscribersList)
+	router.Put("/invite/accept/:senderId", middleware.UserAuthHandler, profilecontrollers.AcceptInviteToSubscribersList)
+	router.Delete("/invite/decline/:senderId", middleware.UserAuthHandler, profilecontrollers.DeclineInviteToSubscribersList)
 
 	router.Post("/request/:profileId", middleware.UserAuthHandler)
 	router.Delete("/request/cancel/:requestId", middleware.UserAuthHandler)

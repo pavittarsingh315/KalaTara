@@ -1,7 +1,10 @@
 package models
 
 import (
+	"errors"
 	"time"
+
+	"gorm.io/gorm"
 )
 
 /*
@@ -40,8 +43,15 @@ type ProfileSubscriber struct {
 	SubscriberId string    `json:"subscriber_id" gorm:"primary_key;type:uuid;<-:create"` // allow read and create (not update)
 	IsInvite     bool      `json:"is_invite" gorm:"<-:create"`                           // allow read and create (not update)
 	IsRequest    bool      `json:"is_request" gorm:"<-:create"`                          // allow read and create (not update)
-	IsAccepted   bool      `json:"is_accepted"`
+	IsAccepted   bool      `json:"is_accepted" gorm:"default:false"`
 	CreatedAt    time.Time `json:"created_at" gorm:"<-:create"` // allow read and create (not update)
+}
+
+func (ps *ProfileSubscriber) BeforeCreate(tx *gorm.DB) error {
+	if (ps.IsInvite && ps.IsRequest) || (!ps.IsInvite && !ps.IsRequest) {
+		return errors.New("only one of the following fields can be true: is_invite or is_request. both cannot be false neither")
+	}
+	return nil
 }
 
 // IMPORTANT: Struct is meant purely for API responses, not any database interactions
