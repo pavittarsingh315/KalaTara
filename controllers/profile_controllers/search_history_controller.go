@@ -29,14 +29,14 @@ func AddToSearchHistory(c *fiber.Ctx) error {
 	// Get entire search history
 	var history []models.SearchHistory
 	if err := configs.Database.Model(&reqProfile).Order("search_histories.created_at DESC").Association("SearchHistory").Find(&history); err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Error. Please try again."}))
+		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
 	}
 
 	// delete oldest history object
 	historyLen := len(history)
 	if historyLen >= 3 {
 		if err := configs.Database.Model(&models.SearchHistory{}).Delete(&history[historyLen-1]).Error; err != nil {
-			return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Error. Please try again."}))
+			return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
 		}
 	}
 
@@ -45,7 +45,7 @@ func AddToSearchHistory(c *fiber.Ctx) error {
 		Query:     reqBody.Query,
 	}
 	if err := configs.Database.Table("search_histories").Create(&newHistoryObj).Error; err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Error. Please try again."}))
+		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
 	}
 
 	return c.Status(fiber.StatusOK).JSON(responses.NewSuccessResponse(fiber.StatusOK, &fiber.Map{"data": "Search added to history"}))
@@ -57,7 +57,7 @@ func RemoveFromSearchHistory(c *fiber.Ctx) error {
 	// Delete the object
 	var historyObj models.SearchHistory
 	if err := configs.Database.Table("search_histories").Delete(&historyObj, "profile_id = ? AND id = ?", reqProfile.Id, c.Params("searchHistoryId")).Error; err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Error. Please try again."}))
+		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
 	}
 
 	return c.Status(fiber.StatusOK).JSON(responses.NewSuccessResponse(fiber.StatusOK, &fiber.Map{"data": "Search removed from history."}))
@@ -69,7 +69,7 @@ func ClearSearchHistory(c *fiber.Ctx) error {
 	// Clear associated SearchHistory objects
 	var historyObj models.SearchHistory
 	if err := configs.Database.Table("search_histories").Delete(&historyObj, "profile_id = ?", reqProfile.Id).Error; err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Error. Please try again."}))
+		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
 	}
 
 	return c.Status(fiber.StatusOK).JSON(responses.NewSuccessResponse(fiber.StatusOK, &fiber.Map{"data": "Search history cleared."}))
@@ -81,7 +81,7 @@ func GetSearchHistory(c *fiber.Ctx) error {
 	// Find associated SearchHistory objects
 	var history []models.SearchHistory
 	if err := configs.Database.Model(&reqProfile).Order("search_histories.created_at DESC").Association("SearchHistory").Find(&history); err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Error. Please try again."}))
+		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
 	}
 
 	return c.Status(fiber.StatusOK).JSON(responses.NewSuccessResponse(fiber.StatusOK, &fiber.Map{"data": history}))

@@ -32,7 +32,7 @@ func Login(c *fiber.Ctx) error {
 	// Check if user exists
 	var user models.User
 	if err := configs.Database.Model(&models.User{}).Preload("Profile").Find(&user, "contact = ?", reqBody.Contact).Error; err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected error..."}))
+		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
 	}
 	if user.Contact == "" || user.Profile.Username == "" { // (contact field is empty => user doesn't exist || username field is empty => profile doesn't exist) => Account is not found
 		return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": "Account not found."}))
@@ -52,7 +52,7 @@ func Login(c *fiber.Ctx) error {
 
 	// Update last login - because we preloaded the profile in the earlier query, we need to create a query on a "clean" user model so that a profile's username unique constraint isn't violated.
 	if err := configs.Database.Model(&models.User{}).Where("id = ?", user.Id).Update("last_login", time.Now()).Error; err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected error..."}))
+		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
 	}
 
 	// Generate auth tokens
@@ -104,7 +104,7 @@ func TokenLogin(c *fiber.Ctx) error {
 	// Check if user exists
 	var user models.User
 	if err := configs.Database.Model(&models.User{}).Preload("Profile").Find(&user, "id = ?", accessBody.UserId).Error; err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected error..."}))
+		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
 	}
 	if user.Contact == "" || user.Profile.Username == "" { // (contact field is empty => user doesn't exist || username field is empty => profile doesn't exist) => Account is not found
 		return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": "Account not found."}))
@@ -120,7 +120,7 @@ func TokenLogin(c *fiber.Ctx) error {
 
 	// Update last login - because we preloaded the profile in the earlier query, we need to create a query on a "clean" user model so that a profile's username unique constraint isn't violated.
 	if err := configs.Database.Model(&models.User{}).Where("id = ?", user.Id).Update("last_login", time.Now()).Error; err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected error..."}))
+		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
 	}
 
 	return c.Status(fiber.StatusOK).JSON(
