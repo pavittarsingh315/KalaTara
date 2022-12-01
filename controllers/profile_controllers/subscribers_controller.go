@@ -194,3 +194,35 @@ func DeclineRequestToSubscribe(c *fiber.Ctx) error {
 
 	return c.Status(fiber.StatusOK).JSON(responses.NewSuccessResponse(fiber.StatusOK, &fiber.Map{"data": "Request has been declined."}))
 }
+
+func RemoveASubscriber(c *fiber.Ctx) error {
+	var reqProfile models.Profile = c.Locals("profile").(models.Profile)
+
+	if reqProfile.Id == c.Params("profileId") {
+		return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": "You cannot remove yourself."}))
+	}
+
+	// Delete the object
+	var subscriberObj models.ProfileSubscriber
+	if err := configs.Database.Table("profile_subscribers").Delete(&subscriberObj, "profile_id = ? AND subscriber_id = ?", reqProfile.Id, c.Params("profileId")).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
+	}
+
+	return c.Status(fiber.StatusOK).JSON(responses.NewSuccessResponse(fiber.StatusOK, &fiber.Map{"data": "Subscriber has been removed."}))
+}
+
+func UnsubscribeFromUser(c *fiber.Ctx) error {
+	var reqProfile models.Profile = c.Locals("profile").(models.Profile)
+
+	if reqProfile.Id == c.Params("profileId") {
+		return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": "You cannot unsubscribe from yourself."}))
+	}
+
+	// Delete the object
+	var subscriberObj models.ProfileSubscriber
+	if err := configs.Database.Table("profile_subscribers").Delete(&subscriberObj, "profile_id = ? AND subscriber_id = ?", c.Params("profileId"), reqProfile.Id).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
+	}
+
+	return c.Status(fiber.StatusOK).JSON(responses.NewSuccessResponse(fiber.StatusOK, &fiber.Map{"data": "Subscription has been canceled."}))
+}
