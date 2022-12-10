@@ -59,11 +59,11 @@ func subscribersRouter(group fiber.Router) {
 	router.Delete("/remove/:profileId", middleware.UserAuthHandler, profilecontrollers.RemoveASubscriber)
 	router.Delete("/unsubscribe/:profileId", middleware.UserAuthHandler, profilecontrollers.UnsubscribeFromUser)
 
+	router.Get("/get", middleware.UserAuthHandler, middleware.PaginationHandler, profilecontrollers.GetSubscribers)
+	router.Get("/subscriptions/get", middleware.UserAuthHandler, middleware.PaginationHandler, profilecontrollers.GetSubscriptions)
+
 	router.Get("/invites/sent/get", middleware.UserAuthHandler, middleware.PaginationHandler)
 	router.Get("/invites/received/get", middleware.UserAuthHandler, middleware.PaginationHandler)
 	router.Get("/requests/sent/get", middleware.UserAuthHandler, middleware.PaginationHandler)
 	router.Get("/requests/received/get", middleware.UserAuthHandler, middleware.PaginationHandler)
-
-	router.Get("/get", middleware.UserAuthHandler, middleware.PaginationHandler)
-	router.Get("/subscriptions/get", middleware.UserAuthHandler, middleware.PaginationHandler)
 }

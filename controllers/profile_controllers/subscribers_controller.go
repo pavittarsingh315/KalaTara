@@ -1,6 +1,9 @@
 package profilecontrollers
 
 import (
+	"fmt"
+	"math"
+
 	"github.com/gofiber/fiber/v2"
 	"nerajima.com/NeraJima/configs"
 	"nerajima.com/NeraJima/models"
@@ -225,4 +228,65 @@ func UnsubscribeFromUser(c *fiber.Ctx) error {
 	}
 
 	return c.Status(fiber.StatusOK).JSON(responses.NewSuccessResponse(fiber.StatusOK, &fiber.Map{"data": "Subscription has been canceled."}))
+}
+
+func GetSubscribers(c *fiber.Ctx) error {
+	var page int = c.Locals("page").(int)
+	var limit int = c.Locals("limit").(int)
+	var offset int = c.Locals("offset").(int)
+	var reqProfile models.Profile = c.Locals("profile").(models.Profile)
+
+	// Get subscribers(paginated)
+	regexMatch := fmt.Sprintf("%%%s%%", c.Query("filter")) // for more information on regex matching in sql, visit https://www.freecodecamp.org/news/sql-contains-string-sql-regex-example-query/
+	var subscribers = []models.MiniProfile{}
+	if err := configs.Database.Model(&reqProfile).Offset(offset).Limit(limit).Order("profile_subscribers.created_at DESC").Where("is_accepted = ?", true).Where("username LIKE ? OR name LIKE ?", regexMatch, regexMatch).Association("Subscribers").Find(&subscribers); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
+	}
+
+	// Get total number of subscribers
+	numSubscribers := configs.Database.Model(&reqProfile).Where("is_accepted = ?", true).Where("username LIKE ? OR name LIKE ?", regexMatch, regexMatch).Association("Subscribers").Count()
+
+	return c.Status(fiber.StatusOK).JSON(responses.NewSuccessResponse(fiber.StatusOK, &fiber.Map{
+		"data": &fiber.Map{
+			"current_page": page,
+			"last_page":    int(math.Ceil(float64(numSubscribers) / float64(limit))),
+			"data":         subscribers,
+		},
+	}))
+}
+
+func GetSubscriptions(c *fiber.Ctx) error {
+	var page int = c.Locals("page").(int)
+	var limit int = c.Locals("limit").(int)
+	var offset int = c.Locals("offset").(int)
+	var reqProfile models.Profile = c.Locals("profile").(models.Profile)
+
+	/*
+	   IMPORTANT:
+	      To build the raw queries below, I used the default gorm logger in Info mode to inspect the queries made by the GetSubscribers endpoint when gettings the subscribers list and numsubscribers.
+	      I then used those queries and altered them to build the queries seen below.
+	*/
+
+	// Get subscriptions(paginated)
+	regexMatch := fmt.Sprintf("%%%s%%", c.Query("filter")) // for more information on regex matching in sql, visit https://www.freecodecamp.org/news/sql-contains-string-sql-regex-example-query/
+	query := fmt.Sprintf("SELECT profiles.id, profiles.created_at, profiles.updated_at, profiles.user_id, profiles.username, profiles.name, profiles.bio, profiles.avatar, profiles.mini_avatar, profiles.birthday FROM profiles JOIN profile_subscribers ON profile_subscribers.subscriber_id = \"%s\" AND profile_subscribers.profile_id = profiles.id WHERE is_accepted = %d AND (username LIKE \"%s\" OR name LIKE \"%s\") ORDER BY profile_subscribers.created_at DESC LIMIT %d OFFSET %d", reqProfile.Id, 1, regexMatch, regexMatch, limit, offset)
+	var subscriptions = []models.MiniProfile{}
+	if err := configs.Database.Raw(query).Scan(&subscriptions).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
+	}
+
+	// SELECT count(*) FROM `profiles` JOIN `profile_subscribers` ON `profile_subscribers`.`subscriber_id` = `profiles`.`id` AND `profile_subscribers`.`profile_id` = 'b9613d83-8fc1-4c4f-ba65-175ebe8dc0ba' WHERE username LIKE '%da%' OR name LIKE '%da%'
+	var numSubscriptions int
+	query2 := fmt.Sprintf("SELECT count(*) FROM profiles JOIN profile_subscribers ON profile_subscribers.subscriber_id = \"%s\" AND profile_subscribers.profile_id = profiles.id WHERE is_accepted = %d AND (username LIKE \"%s\" OR name LIKE \"%s\")", reqProfile.Id, 1, regexMatch, regexMatch)
+	if err := configs.Database.Raw(query2).Scan(&numSubscriptions).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
+	}
+
+	return c.Status(fiber.StatusOK).JSON(responses.NewSuccessResponse(fiber.StatusOK, &fiber.Map{
+		"data": &fiber.Map{
+			"current_page": page,
+			"last_page":    int(math.Ceil(float64(numSubscriptions) / float64(limit))),
+			"data":         subscriptions,
+		},
+	}))
 }
