@@ -64,6 +64,6 @@ func subscribersRouter(group fiber.Router) {
 
 	router.Get("/invites/sent/get", middleware.UserAuthHandler, middleware.PaginationHandler, profilecontrollers.GetInvitesSent)
 	router.Get("/invites/received/get", middleware.UserAuthHandler, middleware.PaginationHandler, profilecontrollers.GetInvitesReceived)
-	router.Get("/requests/sent/get", middleware.UserAuthHandler, middleware.PaginationHandler)
-	router.Get("/requests/received/get", middleware.UserAuthHandler, middleware.PaginationHandler)
+	router.Get("/requests/sent/get", middleware.UserAuthHandler, middleware.PaginationHandler, profilecontrollers.GetRequestsSent)
+	router.Get("/requests/received/get", middleware.UserAuthHandler, middleware.PaginationHandler, profilecontrollers.GetRequestsReceived)
 }

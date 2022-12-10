@@ -361,3 +361,73 @@ func GetInvitesReceived(c *fiber.Ctx) error {
 		},
 	}))
 }
+
+func GetRequestsSent(c *fiber.Ctx) error {
+	var page int = c.Locals("page").(int)
+	var limit int = c.Locals("limit").(int)
+	var offset int = c.Locals("offset").(int)
+	var reqProfile models.Profile = c.Locals("profile").(models.Profile)
+
+	/*
+	   IMPORTANT:
+	      To build the raw queries below, I used the raw query from the GetSubscriptions endpoint made a few changes
+	*/
+
+	// Get requests sent(paginated)
+	regexMatch := fmt.Sprintf("%%%s%%", c.Query("filter")) // for more information on regex matching in sql, visit https://www.freecodecamp.org/news/sql-contains-string-sql-regex-example-query/
+	query := fmt.Sprintf("SELECT profiles.id, profiles.created_at, profiles.updated_at, profiles.user_id, profiles.username, profiles.name, profiles.bio, profiles.avatar, profiles.mini_avatar, profiles.birthday FROM profiles JOIN profile_subscribers ON profile_subscribers.subscriber_id = \"%s\" AND profile_subscribers.profile_id = profiles.id WHERE is_accepted = %d AND is_request = %d AND (username LIKE \"%s\" OR name LIKE \"%s\") ORDER BY profile_subscribers.created_at DESC LIMIT %d OFFSET %d", reqProfile.Id, 0, 1, regexMatch, regexMatch, limit, offset)
+	var requestsSent = []models.MiniProfile{}
+	if err := configs.Database.Raw(query).Scan(&requestsSent).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
+	}
+
+	// Get total number of requests sent
+	var numRequestsSent int
+	query2 := fmt.Sprintf("SELECT count(*) FROM profiles JOIN profile_subscribers ON profile_subscribers.subscriber_id = \"%s\" AND profile_subscribers.profile_id = profiles.id WHERE is_accepted = %d AND is_request = %d AND (username LIKE \"%s\" OR name LIKE \"%s\")", reqProfile.Id, 0, 1, regexMatch, regexMatch)
+	if err := configs.Database.Raw(query2).Scan(&numRequestsSent).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
+	}
+
+	return c.Status(fiber.StatusOK).JSON(responses.NewSuccessResponse(fiber.StatusOK, &fiber.Map{
+		"data": &fiber.Map{
+			"current_page": page,
+			"last_page":    int(math.Ceil(float64(numRequestsSent) / float64(limit))),
+			"data":         requestsSent,
+		},
+	}))
+}
+
+func GetRequestsReceived(c *fiber.Ctx) error {
+	var page int = c.Locals("page").(int)
+	var limit int = c.Locals("limit").(int)
+	var offset int = c.Locals("offset").(int)
+	var reqProfile models.Profile = c.Locals("profile").(models.Profile)
+
+	/*
+	   IMPORTANT:
+	      To build the raw queries below, I used the raw query from the GetSubscriptions endpoint made a few changes
+	*/
+
+	// Get requests sent(paginated)
+	regexMatch := fmt.Sprintf("%%%s%%", c.Query("filter")) // for more information on regex matching in sql, visit https://www.freecodecamp.org/news/sql-contains-string-sql-regex-example-query/
+	query := fmt.Sprintf("SELECT profiles.id, profiles.created_at, profiles.updated_at, profiles.user_id, profiles.username, profiles.name, profiles.bio, profiles.avatar, profiles.mini_avatar, profiles.birthday FROM profiles JOIN profile_subscribers ON profile_subscribers.subscriber_id = profiles.id AND profile_subscribers.profile_id = \"%s\" WHERE is_accepted = %d AND is_request = %d AND (username LIKE \"%s\" OR name LIKE \"%s\") ORDER BY profile_subscribers.created_at DESC LIMIT %d OFFSET %d", reqProfile.Id, 0, 1, regexMatch, regexMatch, limit, offset)
+	var requestsReceived = []models.MiniProfile{}
+	if err := configs.Database.Raw(query).Scan(&requestsReceived).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
+	}
+
+	// Get total number of requests sent
+	var numRequestsReceived int
+	query2 := fmt.Sprintf("SELECT count(*) FROM profiles JOIN profile_subscribers ON profile_subscribers.subscriber_id = profiles.id AND profile_subscribers.profile_id = \"%s\" WHERE is_accepted = %d AND is_request = %d AND (username LIKE \"%s\" OR name LIKE \"%s\")", reqProfile.Id, 0, 1, regexMatch, regexMatch)
+	if err := configs.Database.Raw(query2).Scan(&numRequestsReceived).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
+	}
+
+	return c.Status(fiber.StatusOK).JSON(responses.NewSuccessResponse(fiber.StatusOK, &fiber.Map{
+		"data": &fiber.Map{
+			"current_page": page,
+			"last_page":    int(math.Ceil(float64(numRequestsReceived) / float64(limit))),
+			"data":         requestsReceived,
+		},
+	}))
+}
