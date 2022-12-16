@@ -9,6 +9,7 @@ import (
 
 // IMPORTANT: For more information on gorm tags: https://gorm.io/docs/models.html#Field-Level-Permission
 
+// TODO: index the CreatedAt field so ordering queries is efficient
 type Base struct {
 	Id        string    `json:"id" gorm:"primary_key;<-:create" sql:"type:uuid;primary_key;default:uuid_generate_v4()"` // allow read and create (not update)
 	CreatedAt time.Time `json:"created_at" gorm:"<-:create"`                                                            // allow read and create (not update)

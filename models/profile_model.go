@@ -16,6 +16,7 @@ import (
    The "SearchHistory" field is for the "has many" relation between the Profile and SearchHistory models
 */
 
+// TODO: index the username and name fields so that when performing a search on profiles using those fields, the searches are fast/efficient.
 type Profile struct {
 	Base
 	UserId        string          `json:"user_id" gorm:"size:191"`
@@ -31,6 +32,7 @@ type Profile struct {
 }
 
 // This is a custom junction table for the self-referencing many-to-many relationship between a Profile and a Follower
+// TODO: index the CreatedAt field so ordering queries is efficient
 type ProfileFollower struct {
 	ProfileId  string    `json:"followed_id" gorm:"primary_key;type:uuid;<-:create"` // allow read and create (not update)
 	FollowerId string    `json:"follower_id" gorm:"primary_key;type:uuid;<-:create"` // allow read and create (not update)
@@ -38,6 +40,8 @@ type ProfileFollower struct {
 }
 
 // This is a custom junction table for the self-referencing many-to-many relationship between a Profile and a Subscriber
+// TODO: index the CreatedAt field so ordering queries is efficient
+// TODO: index the IsAccepted, IsRequest, IsInvite fields
 type ProfileSubscriber struct {
 	ProfileId    string    `json:"profile_id" gorm:"primary_key;type:uuid;<-:create"`    // allow read and create (not update)
 	SubscriberId string    `json:"subscriber_id" gorm:"primary_key;type:uuid;<-:create"` // allow read and create (not update)
