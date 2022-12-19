@@ -14,6 +14,8 @@ import (
    The Profile has a many to many relation with itself for 2 fields: followers & subscribers => https://gorm.io/docs/many_to_many.html#Self-Referential-Many2Many
 
    The "SearchHistory" field is for the "has many" relation between the Profile and SearchHistory models
+
+   The "Posts" field is for the "has many" relation between the Profile and Post models
 */
 
 // TODO: index the username and name fields so that when performing a search on profiles using those fields, the searches are fast/efficient.
@@ -27,8 +29,9 @@ type Profile struct {
 	MiniAvatar    string          `json:"mini_avatar"`
 	Birthday      time.Time       `json:"birthday"`
 	Followers     []*Profile      `json:"followers" gorm:"many2many:profile_followers"`
-	SearchHistory []SearchHistory `json:"search_history"`
 	Subscribers   []*Profile      `json:"subscribers" gorm:"many2many:profile_subscribers"`
+	SearchHistory []SearchHistory `json:"search_history"`
+	Posts         []Post          `json:"posts"`
 }
 
 // This is a custom junction table for the self-referencing many-to-many relationship between a Profile and a Follower

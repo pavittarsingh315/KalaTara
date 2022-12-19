@@ -18,7 +18,7 @@ type User struct {
 	Name      string    `json:"name"`
 	Contact   string    `json:"contact" gorm:"unique"`
 	Password  string    `json:"password"`
-	Role      string    `json:"role"`
+	Role      string    `json:"role" gorm:"<-:create"` // allow read and create (not update)
 	Strikes   uint8     `json:"strikes"`
 	Birthday  time.Time `json:"birthday"`
 	LastLogin time.Time `json:"last_login"`

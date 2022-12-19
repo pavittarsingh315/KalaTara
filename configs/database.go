@@ -33,7 +33,7 @@ func InitDatabase() {
 		panic(err)
 	}
 
-	if err = db.AutoMigrate(&models.TemporaryObject{}, &models.User{}, &models.Profile{}, &models.SearchHistory{}); err != nil {
+	if err = db.AutoMigrate(&models.TemporaryObject{}, &models.User{}, &models.Profile{}, &models.SearchHistory{}, &models.Post{}, &models.PostMedia{}); err != nil {
 		log.Fatal("Error during migration...")
 		panic(err)
 	}
