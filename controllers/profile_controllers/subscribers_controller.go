@@ -237,7 +237,7 @@ func GetSubscribers(c *fiber.Ctx) error {
 	var reqProfile models.Profile = c.Locals("profile").(models.Profile)
 
 	// Get subscribers(paginated)
-	regexMatch := fmt.Sprintf("%%%s%%", c.Query("filter")) // for more information on regex matching in sql, visit https://www.freecodecamp.org/news/sql-contains-string-sql-regex-example-query/
+	regexMatch := fmt.Sprintf("%s%%", c.Query("filter")) // for more information on regex matching in sql, visit https://www.freecodecamp.org/news/sql-contains-string-sql-regex-example-query/
 	var subscribers = []models.MiniProfile{}
 	if err := configs.Database.Model(&reqProfile).Offset(offset).Limit(limit).Order("profile_subscribers.created_at DESC").Where("is_accepted = ?", true).Where("username LIKE ? OR name LIKE ?", regexMatch, regexMatch).Association("Subscribers").Find(&subscribers); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
@@ -268,7 +268,7 @@ func GetSubscriptions(c *fiber.Ctx) error {
 	*/
 
 	// Get subscriptions(paginated)
-	regexMatch := fmt.Sprintf("%%%s%%", c.Query("filter")) // for more information on regex matching in sql, visit https://www.freecodecamp.org/news/sql-contains-string-sql-regex-example-query/
+	regexMatch := fmt.Sprintf("%s%%", c.Query("filter")) // for more information on regex matching in sql, visit https://www.freecodecamp.org/news/sql-contains-string-sql-regex-example-query/
 	query := fmt.Sprintf("SELECT profiles.id, profiles.created_at, profiles.updated_at, profiles.user_id, profiles.username, profiles.name, profiles.bio, profiles.avatar, profiles.mini_avatar, profiles.birthday FROM profiles JOIN profile_subscribers ON profile_subscribers.subscriber_id = \"%s\" AND profile_subscribers.profile_id = profiles.id WHERE is_accepted = %d AND (username LIKE \"%s\" OR name LIKE \"%s\") ORDER BY profile_subscribers.created_at DESC LIMIT %d OFFSET %d", reqProfile.Id, 1, regexMatch, regexMatch, limit, offset)
 	var subscriptions = []models.MiniProfile{}
 	if err := configs.Database.Raw(query).Scan(&subscriptions).Error; err != nil {
@@ -303,7 +303,7 @@ func GetInvitesSent(c *fiber.Ctx) error {
 	*/
 
 	// Get invites sent(paginated)
-	regexMatch := fmt.Sprintf("%%%s%%", c.Query("filter")) // for more information on regex matching in sql, visit https://www.freecodecamp.org/news/sql-contains-string-sql-regex-example-query/
+	regexMatch := fmt.Sprintf("%s%%", c.Query("filter")) // for more information on regex matching in sql, visit https://www.freecodecamp.org/news/sql-contains-string-sql-regex-example-query/
 	query := fmt.Sprintf("SELECT profiles.id, profiles.created_at, profiles.updated_at, profiles.user_id, profiles.username, profiles.name, profiles.bio, profiles.avatar, profiles.mini_avatar, profiles.birthday FROM profiles JOIN profile_subscribers ON profile_subscribers.subscriber_id = profiles.id AND profile_subscribers.profile_id = \"%s\" WHERE is_accepted = %d AND is_invite = %d AND (username LIKE \"%s\" OR name LIKE \"%s\") ORDER BY profile_subscribers.created_at DESC LIMIT %d OFFSET %d", reqProfile.Id, 0, 1, regexMatch, regexMatch, limit, offset)
 	var invitesSent = []models.MiniProfile{}
 	if err := configs.Database.Raw(query).Scan(&invitesSent).Error; err != nil {
@@ -339,7 +339,7 @@ func GetInvitesReceived(c *fiber.Ctx) error {
 	*/
 
 	// Get invites sent(paginated)
-	regexMatch := fmt.Sprintf("%%%s%%", c.Query("filter")) // for more information on regex matching in sql, visit https://www.freecodecamp.org/news/sql-contains-string-sql-regex-example-query/
+	regexMatch := fmt.Sprintf("%s%%", c.Query("filter")) // for more information on regex matching in sql, visit https://www.freecodecamp.org/news/sql-contains-string-sql-regex-example-query/
 	query := fmt.Sprintf("SELECT profiles.id, profiles.created_at, profiles.updated_at, profiles.user_id, profiles.username, profiles.name, profiles.bio, profiles.avatar, profiles.mini_avatar, profiles.birthday FROM profiles JOIN profile_subscribers ON profile_subscribers.subscriber_id = \"%s\" AND profile_subscribers.profile_id = profiles.id WHERE is_accepted = %d AND is_invite = %d AND (username LIKE \"%s\" OR name LIKE \"%s\") ORDER BY profile_subscribers.created_at DESC LIMIT %d OFFSET %d", reqProfile.Id, 0, 1, regexMatch, regexMatch, limit, offset)
 	var invitesReceived = []models.MiniProfile{}
 	if err := configs.Database.Raw(query).Scan(&invitesReceived).Error; err != nil {
@@ -374,7 +374,7 @@ func GetRequestsSent(c *fiber.Ctx) error {
 	*/
 
 	// Get requests sent(paginated)
-	regexMatch := fmt.Sprintf("%%%s%%", c.Query("filter")) // for more information on regex matching in sql, visit https://www.freecodecamp.org/news/sql-contains-string-sql-regex-example-query/
+	regexMatch := fmt.Sprintf("%s%%", c.Query("filter")) // for more information on regex matching in sql, visit https://www.freecodecamp.org/news/sql-contains-string-sql-regex-example-query/
 	query := fmt.Sprintf("SELECT profiles.id, profiles.created_at, profiles.updated_at, profiles.user_id, profiles.username, profiles.name, profiles.bio, profiles.avatar, profiles.mini_avatar, profiles.birthday FROM profiles JOIN profile_subscribers ON profile_subscribers.subscriber_id = \"%s\" AND profile_subscribers.profile_id = profiles.id WHERE is_accepted = %d AND is_request = %d AND (username LIKE \"%s\" OR name LIKE \"%s\") ORDER BY profile_subscribers.created_at DESC LIMIT %d OFFSET %d", reqProfile.Id, 0, 1, regexMatch, regexMatch, limit, offset)
 	var requestsSent = []models.MiniProfile{}
 	if err := configs.Database.Raw(query).Scan(&requestsSent).Error; err != nil {
@@ -409,7 +409,7 @@ func GetRequestsReceived(c *fiber.Ctx) error {
 	*/
 
 	// Get requests sent(paginated)
-	regexMatch := fmt.Sprintf("%%%s%%", c.Query("filter")) // for more information on regex matching in sql, visit https://www.freecodecamp.org/news/sql-contains-string-sql-regex-example-query/
+	regexMatch := fmt.Sprintf("%s%%", c.Query("filter")) // for more information on regex matching in sql, visit https://www.freecodecamp.org/news/sql-contains-string-sql-regex-example-query/
 	query := fmt.Sprintf("SELECT profiles.id, profiles.created_at, profiles.updated_at, profiles.user_id, profiles.username, profiles.name, profiles.bio, profiles.avatar, profiles.mini_avatar, profiles.birthday FROM profiles JOIN profile_subscribers ON profile_subscribers.subscriber_id = profiles.id AND profile_subscribers.profile_id = \"%s\" WHERE is_accepted = %d AND is_request = %d AND (username LIKE \"%s\" OR name LIKE \"%s\") ORDER BY profile_subscribers.created_at DESC LIMIT %d OFFSET %d", reqProfile.Id, 0, 1, regexMatch, regexMatch, limit, offset)
 	var requestsReceived = []models.MiniProfile{}
 	if err := configs.Database.Raw(query).Scan(&requestsReceived).Error; err != nil {

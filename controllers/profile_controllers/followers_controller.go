@@ -93,7 +93,7 @@ func GetFollowers(c *fiber.Ctx) error {
 	}
 
 	// Get followers(paginated)
-	regexMatch := fmt.Sprintf("%%%s%%", c.Query("filter")) // for more information on regex matching in sql, visit https://www.freecodecamp.org/news/sql-contains-string-sql-regex-example-query/
+	regexMatch := fmt.Sprintf("%s%%", c.Query("filter")) // for more information on regex matching in sql, visit https://www.freecodecamp.org/news/sql-contains-string-sql-regex-example-query/
 	var followers []models.MiniProfile
 	if err := configs.Database.Model(&profile).Offset(offset).Limit(limit).Order("profile_followers.created_at DESC").Where("username LIKE ? OR name LIKE ?", regexMatch, regexMatch).Association("Followers").Find(&followers); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
@@ -131,7 +131,7 @@ func GetFollowing(c *fiber.Ctx) error {
 	*/
 
 	// Get following(paginated)
-	regexMatch := fmt.Sprintf("%%%s%%", c.Query("filter")) // for more information on regex matching in sql, visit https://www.freecodecamp.org/news/sql-contains-string-sql-regex-example-query/
+	regexMatch := fmt.Sprintf("%s%%", c.Query("filter")) // for more information on regex matching in sql, visit https://www.freecodecamp.org/news/sql-contains-string-sql-regex-example-query/
 	query := fmt.Sprintf("SELECT profiles.id, profiles.created_at, profiles.updated_at, profiles.user_id, profiles.username, profiles.name, profiles.bio, profiles.avatar, profiles.mini_avatar, profiles.birthday FROM profiles JOIN profile_followers ON profile_followers.follower_id = \"%s\" AND profile_followers.profile_id = profiles.id WHERE username LIKE \"%s\" OR name LIKE \"%s\" ORDER BY profile_followers.created_at DESC LIMIT %d OFFSET %d", c.Params("profileId"), regexMatch, regexMatch, limit, offset)
 	var following = []models.MiniProfile{}
 	if err := configs.Database.Raw(query).Scan(&following).Error; err != nil {

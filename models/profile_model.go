@@ -18,7 +18,7 @@ import (
    The "Posts" field is for the "has many" relation between the Profile and Post models
 */
 
-// TODO: index the username and name fields so that when performing a search on profiles using those fields, the searches are fast/efficient.
+// TODO: index the name field so that when performing a search on profiles using a name, the searches are fast/efficient.
 type Profile struct {
 	Base
 	UserId        string          `json:"user_id" gorm:"size:191"`
@@ -35,15 +35,13 @@ type Profile struct {
 }
 
 // This is a custom junction table for the self-referencing many-to-many relationship between a Profile and a Follower
-// TODO: index the CreatedAt field so ordering queries is efficient
 type ProfileFollower struct {
 	ProfileId  string    `json:"followed_id" gorm:"primary_key;type:uuid;<-:create"` // allow read and create (not update)
 	FollowerId string    `json:"follower_id" gorm:"primary_key;type:uuid;<-:create"` // allow read and create (not update)
-	CreatedAt  time.Time `json:"created_at" gorm:"<-:create"`                        // allow read and create (not update)
+	CreatedAt  time.Time `json:"created_at" gorm:"index;<-:create"`                  // allow read and create (not update)
 }
 
 // This is a custom junction table for the self-referencing many-to-many relationship between a Profile and a Subscriber
-// TODO: index the CreatedAt field so ordering queries is efficient
 // TODO: index the IsAccepted, IsRequest, IsInvite fields
 type ProfileSubscriber struct {
 	ProfileId    string    `json:"profile_id" gorm:"primary_key;type:uuid;<-:create"`    // allow read and create (not update)
@@ -51,7 +49,7 @@ type ProfileSubscriber struct {
 	IsInvite     bool      `json:"is_invite" gorm:"<-:create"`                           // allow read and create (not update)
 	IsRequest    bool      `json:"is_request" gorm:"<-:create"`                          // allow read and create (not update)
 	IsAccepted   bool      `json:"is_accepted" gorm:"default:false"`
-	CreatedAt    time.Time `json:"created_at" gorm:"<-:create"` // allow read and create (not update)
+	CreatedAt    time.Time `json:"created_at" gorm:"index;<-:create"` // allow read and create (not update)
 }
 
 func (ps *ProfileSubscriber) BeforeCreate(tx *gorm.DB) error {
