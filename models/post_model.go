@@ -36,6 +36,7 @@ type PostMedia struct {
 
 func (pm *PostMedia) BeforeCreate(tx *gorm.DB) error {
 	if (pm.IsImage && !pm.IsVideo && !pm.IsAudio) || (!pm.IsImage && pm.IsVideo && !pm.IsAudio) || (!pm.IsImage && !pm.IsVideo && pm.IsAudio) {
+		pm.Base.BeforeCreate(tx) // refer to user_model.go BeforeCreate to learn reasoning behind this
 		return nil
 	}
 	return errors.New("only one of the following fields can be true: is_image, is_video, is_audio. one field also must be true")
