@@ -6,6 +6,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/rivo/uniseg"
+	"gorm.io/gorm/clause"
 	"nerajima.com/NeraJima/configs"
 	"nerajima.com/NeraJima/models"
 	"nerajima.com/NeraJima/responses"
@@ -74,9 +75,10 @@ func CreatePost(c *fiber.Ctx) error {
 	}
 
 	var postMedia = []models.PostMedia{}
-	for _, mediaObj := range reqBody.Media {
+	for index, mediaObj := range reqBody.Media {
 		postMedia = append(postMedia, models.PostMedia{
 			PostId:   newPost.Id,
+			Position: index,
 			MediaUrl: mediaObj.MediaUrl,
 			IsImage:  *mediaObj.IsImage,
 			IsVideo:  *mediaObj.IsVideo,
@@ -91,7 +93,46 @@ func CreatePost(c *fiber.Ctx) error {
 }
 
 func GetPost(c *fiber.Ctx) error {
-	return c.Status(fiber.StatusOK).JSON(responses.NewSuccessResponse(fiber.StatusOK, &fiber.Map{"data": "Get Post"}))
+	var reqProfile models.Profile = c.Locals("profile").(models.Profile)
+
+	var post models.Post
+	if err := configs.Database.Model(&models.Post{}).Preload("Media").Find(&post, "id = ?", c.Params("postId")).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
+	}
+	if post.Id == "" { // Id field is empty => post does not exist
+		return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": "This post does not exist."}))
+	}
+
+	// if request user is owner, return the post because its the owner
+	if post.ProfileId == reqProfile.Id {
+		return c.Status(fiber.StatusOK).JSON(responses.NewSuccessResponse(fiber.StatusOK, &fiber.Map{"data": post}))
+	} else if !post.IsArchived && !post.ForSubscribersOnly { // if post is not archived and is not hidden, return it
+		return c.Status(fiber.StatusOK).JSON(responses.NewSuccessResponse(fiber.StatusOK, &fiber.Map{"data": post}))
+	}
+
+	/*
+	   At this point, the possible values for post.IsArchived and post.ForSubscribersOnly is
+	      1. True, True
+	      2. True, False
+	      3. False, True
+	*/
+
+	if post.IsArchived {
+		return c.Status(fiber.StatusLocked).JSON(responses.NewErrorResponse(fiber.StatusLocked, &fiber.Map{"data": "You do not have access to this post."}))
+	}
+
+	// At this point, we know post.IsArchived is false so post.ForSubscribersOnly must be true
+
+	// Check if request user is subscribed to post owner
+	var subscriberObj models.ProfileSubscriber
+	if err := configs.Database.Table("profile_subscribers").Find(&subscriberObj, "profile_id = ? AND subscriber_id = ?", post.ProfileId, reqProfile.Id).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
+	}
+	if subscriberObj.ProfileId != "" && subscriberObj.SubscriberId != "" { // if both fields are populated, request user is subscribed to post owner
+		return c.Status(fiber.StatusOK).JSON(responses.NewSuccessResponse(fiber.StatusOK, &fiber.Map{"data": post}))
+	} else {
+		return c.Status(fiber.StatusLocked).JSON(responses.NewErrorResponse(fiber.StatusLocked, &fiber.Map{"data": "This post is limited to subscribers only."}))
+	}
 }
 
 func EditPost(c *fiber.Ctx) error {
@@ -99,5 +140,14 @@ func EditPost(c *fiber.Ctx) error {
 }
 
 func DeletePost(c *fiber.Ctx) error {
-	return c.Status(fiber.StatusOK).JSON(responses.NewSuccessResponse(fiber.StatusOK, &fiber.Map{"data": "Delete Post"}))
+	var reqProfile models.Profile = c.Locals("profile").(models.Profile)
+
+	// Refer to the clause.Associations section in the GORM docs for more info: https://gorm.io/docs/associations.html#Delete-with-Select
+	var base = models.Base{Id: c.Params("postId")}
+	var post = models.Post{Base: base, ProfileId: reqProfile.Id}
+	if err := configs.Database.Model(&models.Post{}).Select(clause.Associations).Delete(&post).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
+	}
+
+	return c.Status(fiber.StatusOK).JSON(responses.NewSuccessResponse(fiber.StatusOK, &fiber.Map{"data": "The post was deleted successfully."}))
 }

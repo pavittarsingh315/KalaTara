@@ -28,6 +28,7 @@ type Post struct {
 type PostMedia struct {
 	Base
 	PostId   string `json:"post_id" gorm:"size:191"` // for info on the size parameter: https://github.com/go-gorm/gorm/issues/3369
+	Position int    `json:"position"`
 	MediaUrl string `json:"media_url"`
 	IsImage  bool   `json:"is_image"`
 	IsVideo  bool   `json:"is_video"`
