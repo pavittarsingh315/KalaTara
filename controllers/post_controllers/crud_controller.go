@@ -136,7 +136,42 @@ func GetPost(c *fiber.Ctx) error {
 }
 
 func EditPost(c *fiber.Ctx) error {
-	return c.Status(fiber.StatusOK).JSON(responses.NewSuccessResponse(fiber.StatusOK, &fiber.Map{"data": "Edit Post"}))
+	var reqProfile models.Profile = c.Locals("profile").(models.Profile)
+	reqBody := struct {
+		Title              string `json:"title"`
+		Caption            string `json:"caption"`
+		ForSubscribersOnly *bool  `json:"for_subscribers_only"`
+		IsArchived         *bool  `json:"is_archived"`
+	}{}
+
+	if err := c.BodyParser(&reqBody); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": "Bad request..."}))
+	}
+
+	if reqBody.Title == "" || reqBody.Caption == "" || reqBody.IsArchived == nil || reqBody.ForSubscribersOnly == nil {
+		return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": "Please include all fields."}))
+	}
+
+	reqBody.Title = strings.TrimSpace(reqBody.Title)     // remove leading and trailing whitespace
+	reqBody.Caption = strings.TrimSpace(reqBody.Caption) // remove leading and trailing whitespace
+
+	titleLength := uniseg.GraphemeClusterCount(reqBody.Title)
+	captionLength := uniseg.GraphemeClusterCount(reqBody.Caption)
+	if titleLength > 150 {
+		return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": "Title is too long."}))
+	}
+	if captionLength > 200 {
+		return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": "Caption is too long."}))
+	}
+
+	// Update the fields
+	var base = models.Base{Id: c.Params("postId")}
+	var post = models.Post{Base: base, ProfileId: reqProfile.Id}
+	if err := configs.Database.Model(&post).Updates(map[string]interface{}{"title": reqBody.Title, "caption": reqBody.Caption, "for_subscribers_only": *reqBody.ForSubscribersOnly, "is_archived": *reqBody.IsArchived}).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
+	}
+
+	return c.Status(fiber.StatusOK).JSON(responses.NewSuccessResponse(fiber.StatusOK, &fiber.Map{"data": "Post has been successfully updated."}))
 }
 
 func DeletePost(c *fiber.Ctx) error {
