@@ -27,7 +27,7 @@ func specializedReadsRouter(group fiber.Router) {
 
 	router.Get("/get/followings/feed", middleware.UserAuthHandler, middleware.PaginationHandler, postcontrollers.GetFollowingsFeed)
 	router.Get("/get/subscriptions/feed", middleware.UserAuthHandler, middleware.PaginationHandler, postcontrollers.GetSubscriptionsFeed)
-	router.Get("/get/archives", middleware.UserAuthHandler, middleware.PaginationHandler, postcontrollers.GetArchivedPosts)
+	router.Get("/user/archives", middleware.UserAuthHandler, middleware.PaginationHandler, postcontrollers.GetArchivedPosts)
 	router.Get("/get/public/:profileId", middleware.UserAuthHandler, middleware.PaginationHandler, postcontrollers.GetPublicPosts)
 	router.Get("/get/exclusive/:profileId", middleware.UserAuthHandler, middleware.PaginationHandler, postcontrollers.GetExclusivePosts)
 }
