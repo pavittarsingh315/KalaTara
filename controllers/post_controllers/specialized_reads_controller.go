@@ -1,7 +1,9 @@
 package postcontrollers
 
 import (
+	"fmt"
 	"math"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"nerajima.com/NeraJima/configs"
@@ -10,11 +12,97 @@ import (
 )
 
 func GetFollowingsFeed(c *fiber.Ctx) error {
-	return c.Status(fiber.StatusOK).JSON(responses.NewSuccessResponse(fiber.StatusOK, &fiber.Map{"data": "Get Followings Feed."}))
+	var page int = c.Locals("page").(int)
+	var limit int = c.Locals("limit").(int)
+	var offset int = c.Locals("offset").(int)
+	var reqProfile models.Profile = c.Locals("profile").(models.Profile)
+
+	query := fmt.Sprintf(
+		"SELECT post.id, post.created_at, post.title, post.caption, post.profile_id, profile.username, profile.name, profile.mini_avatar"+
+			" FROM profiles as profile"+
+			" JOIN profile_followers"+
+			" ON profile_followers.follower_id = \"%s\" AND profile_followers.profile_id = profile.id"+
+			" JOIN posts as post"+
+			" ON post.profile_id = profile.id"+
+			" WHERE post.is_archived = %d AND post.for_subscribers_only = %d"+
+			" ORDER BY post.created_at DESC LIMIT %d OFFSET %d",
+		reqProfile.Id, 0, 0, limit, offset,
+	)
+	var followingFeedPosts = []struct {
+		Id         string    `json:"id"`
+		ProfileId  string    `json:"profile_id"`
+		Username   string    `json:"profile_username"`
+		Name       string    `json:"profile_name"`
+		MiniAvatar string    `json:"profile_avatar"`
+		Title      string    `json:"title"`
+		Caption    string    `json:"caption"`
+		CreatedAt  time.Time `json:"created_at"`
+	}{}
+	if err := configs.Database.Raw(query).Scan(&followingFeedPosts).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
+	}
+
+	// Get total number of feeds for post
+	var numFollowingFeedPosts int
+	query2 := fmt.Sprintf("SELECT count(*) FROM profiles as profile JOIN profile_followers ON profile_followers.follower_id = \"%s\" AND profile_followers.profile_id = profile.id JOIN posts as post ON post.profile_id = profile.id WHERE post.is_archived = %d AND post.for_subscribers_only = %d", reqProfile.Id, 0, 0)
+	if err := configs.Database.Raw(query2).Scan(&numFollowingFeedPosts).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
+	}
+
+	return c.Status(fiber.StatusOK).JSON(responses.NewSuccessResponse(fiber.StatusOK, &fiber.Map{
+		"data": &fiber.Map{
+			"current_page": page,
+			"last_page":    int(math.Ceil(float64(numFollowingFeedPosts) / float64(limit))),
+			"data":         followingFeedPosts,
+		},
+	}))
 }
 
 func GetSubscriptionsFeed(c *fiber.Ctx) error {
-	return c.Status(fiber.StatusOK).JSON(responses.NewSuccessResponse(fiber.StatusOK, &fiber.Map{"data": "Get Subscriptions Feed."}))
+	var page int = c.Locals("page").(int)
+	var limit int = c.Locals("limit").(int)
+	var offset int = c.Locals("offset").(int)
+	var reqProfile models.Profile = c.Locals("profile").(models.Profile)
+
+	query := fmt.Sprintf(
+		"SELECT post.id, post.created_at, post.title, post.caption, post.profile_id, profile.username, profile.name, profile.mini_avatar"+
+			" FROM profiles as profile"+
+			" JOIN profile_subscribers"+
+			" ON profile_subscribers.subscriber_id = \"%s\" AND profile_subscribers.profile_id = profile.id"+
+			" JOIN posts as post"+
+			" ON post.profile_id = profile.id"+
+			" WHERE post.is_archived = %d AND post.for_subscribers_only = %d"+
+			" ORDER BY post.created_at DESC LIMIT %d OFFSET %d",
+		reqProfile.Id, 0, 1, limit, offset,
+	)
+	var subscriptionsFeedPosts = []struct {
+		Id         string    `json:"id"`
+		ProfileId  string    `json:"profile_id"`
+		Username   string    `json:"profile_username"`
+		Name       string    `json:"profile_name"`
+		MiniAvatar string    `json:"profile_avatar"`
+		Title      string    `json:"title"`
+		Caption    string    `json:"caption"`
+		CreatedAt  time.Time `json:"created_at"`
+	}{}
+	if err := configs.Database.Raw(query).Scan(&subscriptionsFeedPosts).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
+	}
+
+	// Get total number of feeds for post
+	var numSubscriptionsFeedPosts int
+	query2 := fmt.Sprintf("SELECT count(*) FROM profiles as profile JOIN profile_subscribers ON profile_subscribers.subscriber_id = \"%s\" AND profile_subscribers.profile_id = profile.id JOIN posts as post ON post.profile_id = profile.id WHERE post.is_archived = %d AND post.for_subscribers_only = %d", reqProfile.Id, 0, 1)
+	if err := configs.Database.Raw(query2).Scan(&numSubscriptionsFeedPosts).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
+	}
+
+	return c.Status(fiber.StatusOK).JSON(responses.NewSuccessResponse(fiber.StatusOK, &fiber.Map{
+		"data": &fiber.Map{
+			"current_page": page,
+			"last_page":    int(math.Ceil(float64(numSubscriptionsFeedPosts) / float64(limit))),
+			"data":         subscriptionsFeedPosts,
+		},
+	}))
 }
 
 func GetArchivedPosts(c *fiber.Ctx) error {
