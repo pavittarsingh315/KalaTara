@@ -11,6 +11,7 @@ func PostsRouter(group fiber.Router) {
 
 	crudRouter(router)
 	specializedReadsRouter(router)
+	reactionsRouter(router)
 }
 
 func crudRouter(group fiber.Router) {
@@ -30,4 +31,13 @@ func specializedReadsRouter(group fiber.Router) {
 	router.Get("/user/archives", middleware.UserAuthHandler, middleware.PaginationHandler, postcontrollers.GetArchivedPosts)
 	router.Get("/get/public/:profileId", middleware.UserAuthHandler, middleware.PaginationHandler, postcontrollers.GetPublicPosts)
 	router.Get("/get/exclusive/:profileId", middleware.UserAuthHandler, middleware.PaginationHandler, postcontrollers.GetExclusivePosts)
+}
+
+func reactionsRouter(group fiber.Router) {
+	router := group // domain/api/posts
+
+	router.Post("/like/:postId", middleware.UserAuthHandler, postcontrollers.LikePost)
+	router.Post("/dislike/:postId", middleware.UserAuthHandler, postcontrollers.DislikePost)
+	router.Delete("/remove/like/:postId", middleware.UserAuthHandler, postcontrollers.RemoveLike)
+	router.Delete("/remove/dislike/:postId", middleware.UserAuthHandler, postcontrollers.RemoveDislike)
 }
