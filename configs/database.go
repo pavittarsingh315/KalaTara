@@ -40,7 +40,7 @@ func InitDatabase() {
 		&models.SearchHistory{},
 		&models.Post{},
 		&models.PostMedia{},
-		&models.PostLike{},
+		&models.PostReaction{},
 		&models.PostBookmark{},
 	); err != nil {
 		log.Fatal("Error during migration...")
