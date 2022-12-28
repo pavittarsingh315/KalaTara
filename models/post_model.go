@@ -24,7 +24,8 @@ type Post struct {
 	ForSubscribersOnly bool           `json:"for_subscribers_only"`
 	IsArchived         bool           `json:"is_archived"`
 	Media              []PostMedia    `json:"media"`
-	Reactions          []PostReaction `json:"reactions"`
+	Likes              []PostLike     `json:"likes"`
+	Dislikes           []PostDislike  `json:"dislikes"`
 	Bookmarks          []PostBookmark `json:"bookmarks"`
 }
 
@@ -46,20 +47,18 @@ func (pm *PostMedia) BeforeCreate(tx *gorm.DB) error {
 	return errors.New("only one of the following fields can be true: is_image, is_video, is_audio. one field also must be true")
 }
 
-type PostReaction struct {
-	PostId    string    `json:"post_id" gorm:"size:191"`    // for info on the size parameter: https://github.com/go-gorm/gorm/issues/3369
-	ReacterId string    `json:"reacter_id" gorm:"size:191"` // for info on the size parameter: https://github.com/go-gorm/gorm/issues/3369
-	Reacter   Profile   `gorm:"foreignKey:ReacterId"`
-	IsLike    bool      `json:"is_like"`
-	IsDislike bool      `json:"is_dislike"`
+type PostLike struct {
+	PostId    string    `json:"post_id" gorm:"size:191"`  // for info on the size parameter: https://github.com/go-gorm/gorm/issues/3369
+	LikerId   string    `json:"liker_id" gorm:"size:191"` // for info on the size parameter: https://github.com/go-gorm/gorm/issues/3369
+	Liker     Profile   `gorm:"foreignKey:LikerId"`
 	CreatedAt time.Time `json:"created_at" gorm:"index;<-:create"` // allow read and create (not update)
 }
 
-func (pr *PostReaction) BeforeCreate(tx *gorm.DB) error {
-	if (pr.IsLike && pr.IsDislike) || (!pr.IsLike && !pr.IsDislike) {
-		return errors.New("only one of the following fields can be true: is_like or is_dislike. both cannot be false neither")
-	}
-	return nil
+type PostDislike struct {
+	PostId     string    `json:"post_id" gorm:"size:191"`     // for info on the size parameter: https://github.com/go-gorm/gorm/issues/3369
+	DislikerId string    `json:"disliker_id" gorm:"size:191"` // for info on the size parameter: https://github.com/go-gorm/gorm/issues/3369
+	Disliker   Profile   `gorm:"foreignKey:DislikerId"`
+	CreatedAt  time.Time `json:"created_at" gorm:"index;<-:create"` // allow read and create (not update)
 }
 
 type PostBookmark struct {
