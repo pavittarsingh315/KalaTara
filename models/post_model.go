@@ -2,6 +2,7 @@ package models
 
 import (
 	"errors"
+	"time"
 
 	"gorm.io/gorm"
 )
@@ -17,12 +18,14 @@ import (
 
 type Post struct {
 	Base
-	ProfileId          string      `json:"profile_id" gorm:"size:191"` // for info on the size parameter: https://github.com/go-gorm/gorm/issues/3369
-	Title              string      `json:"title"`
-	Caption            string      `json:"caption"`
-	ForSubscribersOnly bool        `json:"for_subscribers_only"`
-	IsArchived         bool        `json:"is_archived"`
-	Media              []PostMedia `json:"media"`
+	ProfileId          string         `json:"profile_id" gorm:"size:191"` // for info on the size parameter: https://github.com/go-gorm/gorm/issues/3369
+	Title              string         `json:"title"`
+	Caption            string         `json:"caption"`
+	ForSubscribersOnly bool           `json:"for_subscribers_only"`
+	IsArchived         bool           `json:"is_archived"`
+	Media              []PostMedia    `json:"media"`
+	Likes              []PostLike     `json:"likes"`
+	Bookmarks          []PostBookmark `json:"bookmarks"`
 }
 
 type PostMedia struct {
@@ -41,4 +44,18 @@ func (pm *PostMedia) BeforeCreate(tx *gorm.DB) error {
 		return nil
 	}
 	return errors.New("only one of the following fields can be true: is_image, is_video, is_audio. one field also must be true")
+}
+
+type PostLike struct {
+	PostId    string    `json:"post_id" gorm:"size:191"`  // for info on the size parameter: https://github.com/go-gorm/gorm/issues/3369
+	LikerId   string    `json:"liker_id" gorm:"size:191"` // for info on the size parameter: https://github.com/go-gorm/gorm/issues/3369
+	Liker     Profile   `gorm:"foreignKey:LikerId"`
+	CreatedAt time.Time `json:"created_at" gorm:"index;<-:create"` // allow read and create (not update)
+}
+
+type PostBookmark struct {
+	PostId       string    `json:"post_id" gorm:"size:191"`       // for info on the size parameter: https://github.com/go-gorm/gorm/issues/3369
+	BookmarkerId string    `json:"bookmarker_id" gorm:"size:191"` // for info on the size parameter: https://github.com/go-gorm/gorm/issues/3369
+	Bookmarker   Profile   `gorm:"foreignKey:BookmarkerId"`
+	CreatedAt    time.Time `json:"created_at" gorm:"index;<-:create"` // allow read and create (not update)
 }
