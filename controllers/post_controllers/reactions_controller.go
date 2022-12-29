@@ -9,21 +9,6 @@ import (
 	"nerajima.com/NeraJima/responses"
 )
 
-// IF EXISTS(SELECT 1 FROM posts as post WHERE post.id = \"%s\")
-// AND NOT EXISTS(SELECT 1 FROM post_likes as pl WHERE pl.post_id = \"%s\" AND pl.liker_id = \"%s\")
-// BEGIN
-//     INSERT INTO post_likes (post_id, liker_id, created_at) VALUES (\"%s\", \"%s\", \"%s\")
-//     DELETE FROM post_dislikes WHERE post_id = \"%s\" AND disliker_id = \"%s\"
-// END
-
-/*
-	SELECT IF(
-      EXISTS(SELECT 1 FROM posts as post WHERE post.id = "b747fc31-58bb-4a32-9f28-7029d39013d0")
-      AND NOT EXISTS(SELECT 1 FROM post_likes as pl WHERE pl.post_id = "b747fc31-58bb-4a32-9f28-7029d39013d0" AND pl.liker_id = "b9613d83-8fc1-4c4f-ba65-175ebe8dc0ba")
-      , 1, 0
-   );
-*/
-
 func LikePost(c *fiber.Ctx) error {
 	var reqProfile models.Profile = c.Locals("profile").(models.Profile)
 
