@@ -12,7 +12,8 @@ import (
 func AddToSearchHistory(c *fiber.Ctx) error {
 	var reqProfile models.Profile = c.Locals("profile").(models.Profile)
 	reqBody := struct {
-		Query string `json:"query"`
+		Query                   string `json:"query"`
+		HistoryLengthAfterQuery *int   `json:"history_length_after_query"`
 	}{}
 
 	if err := c.BodyParser(&reqBody); err != nil {
@@ -20,22 +21,15 @@ func AddToSearchHistory(c *fiber.Ctx) error {
 	}
 
 	// Check if all fields are included
-	if reqBody.Query == "" {
+	if reqBody.Query == "" || reqBody.HistoryLengthAfterQuery == nil {
 		return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": "Please include all fields."}))
 	}
 
 	reqBody.Query = strings.TrimSpace(reqBody.Query) // remove leading and trailing whitespace
 
 	// Get entire search history
-	var history []models.SearchHistory
-	if err := configs.Database.Model(&reqProfile).Order("search_histories.created_at DESC").Association("SearchHistory").Find(&history); err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
-	}
-
-	// delete oldest history object
-	historyLen := len(history)
-	if historyLen >= 3 {
-		if err := configs.Database.Model(&models.SearchHistory{}).Delete(&history[historyLen-1]).Error; err != nil {
+	if *reqBody.HistoryLengthAfterQuery > 20 { // delete bottom 8
+		if err := configs.Database.Model(&models.SearchHistory{}).Limit(8).Order("created_at ASC").Delete(&models.SearchHistory{}, "profile_id = ?", reqProfile.Id).Error; err != nil {
 			return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
 		}
 	}
