@@ -9,25 +9,23 @@ import (
 	"nerajima.com/NeraJima/responses"
 )
 
+// IF EXISTS(SELECT 1 FROM posts as post WHERE post.id = \"%s\")
+// AND NOT EXISTS(SELECT 1 FROM post_likes as pl WHERE pl.post_id = \"%s\" AND pl.liker_id = \"%s\")
+// BEGIN
+//     INSERT INTO post_likes (post_id, liker_id, created_at) VALUES (\"%s\", \"%s\", \"%s\")
+//     DELETE FROM post_dislikes WHERE post_id = \"%s\" AND disliker_id = \"%s\"
+// END
+
+/*
+	SELECT IF(
+      EXISTS(SELECT 1 FROM posts as post WHERE post.id = "b747fc31-58bb-4a32-9f28-7029d39013d0")
+      AND NOT EXISTS(SELECT 1 FROM post_likes as pl WHERE pl.post_id = "b747fc31-58bb-4a32-9f28-7029d39013d0" AND pl.liker_id = "b9613d83-8fc1-4c4f-ba65-175ebe8dc0ba")
+      , 1, 0
+   );
+*/
+
 func LikePost(c *fiber.Ctx) error {
 	var reqProfile models.Profile = c.Locals("profile").(models.Profile)
-
-	// Check if post is already liked
-	var count int64
-	if err := configs.Database.Model(&models.PostLike{}).Where("liker_id = ? AND post_id = ?", reqProfile.Id, c.Params("postId")).Count(&count).Error; err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
-	}
-	if count != 0 { // post is already liked
-		return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": "You have already liked this post."}))
-	}
-
-	// Check if post exists
-	if err := configs.Database.Model(&models.Post{}).Where("id = ?", c.Params("postId")).Count(&count).Error; err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
-	}
-	if count == 0 { // post does not exist
-		return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": "This post does not exist."}))
-	}
 
 	// Delete the dislike object(if it exists)
 	var dislikeObj models.PostDislike
@@ -40,7 +38,7 @@ func LikePost(c *fiber.Ctx) error {
 		LikerId:   reqProfile.Id,
 		CreatedAt: time.Now(),
 	}
-	if err := configs.Database.Model(&models.PostLike{}).Create(&newLikeObj).Error; err != nil {
+	if err := configs.Database.Model(&models.PostLike{}).Where("post_id = ? AND liker_id = ?", newLikeObj.PostId, newLikeObj.LikerId).FirstOrCreate(&newLikeObj).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
 	}
 
@@ -49,23 +47,6 @@ func LikePost(c *fiber.Ctx) error {
 
 func DislikePost(c *fiber.Ctx) error {
 	var reqProfile models.Profile = c.Locals("profile").(models.Profile)
-
-	// Check if post is already disliked
-	var count int64
-	if err := configs.Database.Model(&models.PostDislike{}).Where("disliker_id = ? AND post_id = ?", reqProfile.Id, c.Params("postId")).Count(&count).Error; err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
-	}
-	if count != 0 { // post is already disliked
-		return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": "You have already disliked this post."}))
-	}
-
-	// Check if post exists
-	if err := configs.Database.Model(&models.Post{}).Where("id = ?", c.Params("postId")).Count(&count).Error; err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
-	}
-	if count == 0 { // post does not exist
-		return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": "This post does not exist."}))
-	}
 
 	// Delete the like object(if it exists)
 	var likeObj models.PostLike
@@ -78,7 +59,7 @@ func DislikePost(c *fiber.Ctx) error {
 		DislikerId: reqProfile.Id,
 		CreatedAt:  time.Now(),
 	}
-	if err := configs.Database.Model(&models.PostDislike{}).Create(&newDislikeObj).Error; err != nil {
+	if err := configs.Database.Model(&models.PostDislike{}).Where("post_id = ? AND disliker_id = ?", newDislikeObj.PostId, newDislikeObj.DislikerId).FirstOrCreate(&newDislikeObj).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
 	}
 

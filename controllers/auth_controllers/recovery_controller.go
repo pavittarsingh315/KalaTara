@@ -159,21 +159,11 @@ func ConfirmPasswordReset(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": "Incorrect Code."}))
 	}
 
-	// Check if account exists
-	var user models.User
-	if err := configs.Database.Model(&models.User{}).Find(&user, "contact = ?", reqBody.Contact).Error; err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
-	}
-	if user.Contact == "" { // contact field is empty => user with contact doesn't exist
-		return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": "Account not found."}))
-	}
-
-	if utils.VerifyPassword(user.Password, reqBody.Password) { // old and new passwords match
-		return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": "This is your current password...💀"}))
-	}
+	// We know that a tempObj is created after checking if the user with contact = reqBody.Contact exists.
+	// So theres no need to check now if a user exists with contact = reqBody.Contact because the only way the tempObj is created is if thats true.
 
 	// Update password
-	if err := configs.Database.Model(&user).Update("password", utils.HashPassword(reqBody.Password)).Error; err != nil {
+	if err := configs.Database.Model(&models.User{}).Where("contact = ?", reqBody.Contact).Update("password", utils.HashPassword(reqBody.Password)).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
 	}
 
