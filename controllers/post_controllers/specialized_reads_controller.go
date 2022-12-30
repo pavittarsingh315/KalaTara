@@ -3,6 +3,7 @@ package postcontrollers
 import (
 	"fmt"
 	"math"
+	"strings"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -10,6 +11,22 @@ import (
 	"nerajima.com/NeraJima/models"
 	"nerajima.com/NeraJima/responses"
 )
+
+type feedPosts struct {
+	Id         string    `json:"id"`
+	ProfileId  string    `json:"profile_id"`
+	Username   string    `json:"profile_username"`
+	Name       string    `json:"profile_name"`
+	MiniAvatar string    `json:"profile_avatar"`
+	Title      string    `json:"title"`
+	Caption    string    `json:"caption"`
+	CreatedAt  time.Time `json:"created_at"`
+}
+
+type feedPostsWithMedia struct {
+	feedPosts
+	Media []models.PostMedia `json:"media"`
+}
 
 func GetFollowingsFeed(c *fiber.Ctx) error {
 	var page int = c.Locals("page").(int)
@@ -28,18 +45,35 @@ func GetFollowingsFeed(c *fiber.Ctx) error {
 			" ORDER BY post.created_at DESC LIMIT %d OFFSET %d",
 		reqProfile.Id, 0, 0, limit, offset,
 	)
-	var followingFeedPosts = []struct {
-		Id         string    `json:"id"`
-		ProfileId  string    `json:"profile_id"`
-		Username   string    `json:"profile_username"`
-		Name       string    `json:"profile_name"`
-		MiniAvatar string    `json:"profile_avatar"`
-		Title      string    `json:"title"`
-		Caption    string    `json:"caption"`
-		CreatedAt  time.Time `json:"created_at"`
-	}{}
+	var followingFeedPosts = []feedPosts{}
 	if err := configs.Database.Raw(query).Scan(&followingFeedPosts).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
+	}
+
+	var finalResult = []feedPostsWithMedia{}
+	// SELECT * FROM `post_media` WHERE `post_media`.`post_id` IN (...postIds)
+	query = "SELECT * FROM post_media WHERE post_media.post_id IN ("
+	for _, post := range followingFeedPosts {
+		query += fmt.Sprintf("\"%s\",", post.Id)
+		finalResult = append(finalResult, feedPostsWithMedia{feedPosts: post})
+	}
+	query = strings.TrimSuffix(query, ",")
+	query += ")"
+
+	var postMedia = []models.PostMedia{}
+	if err := configs.Database.Raw(query).Scan(&postMedia).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
+	}
+
+	// TODO: if any time in the future posts are allowed to be made without media being required, you'll need to update this logic which maps the post media to its proper post
+	var i int = 0
+	var lastPostId string = followingFeedPosts[0].Id
+	for _, media := range postMedia {
+		if media.PostId != lastPostId {
+			i++
+		}
+		finalResult[i].Media = append(finalResult[i].Media, media)
+		lastPostId = media.PostId
 	}
 
 	// Get total number of feeds for post
@@ -53,7 +87,7 @@ func GetFollowingsFeed(c *fiber.Ctx) error {
 		"data": &fiber.Map{
 			"current_page": page,
 			"last_page":    int(math.Ceil(float64(numFollowingFeedPosts) / float64(limit))),
-			"data":         followingFeedPosts,
+			"data":         finalResult,
 		},
 	}))
 }
@@ -75,18 +109,35 @@ func GetSubscriptionsFeed(c *fiber.Ctx) error {
 			" ORDER BY post.created_at DESC LIMIT %d OFFSET %d",
 		reqProfile.Id, 0, 1, limit, offset,
 	)
-	var subscriptionsFeedPosts = []struct {
-		Id         string    `json:"id"`
-		ProfileId  string    `json:"profile_id"`
-		Username   string    `json:"profile_username"`
-		Name       string    `json:"profile_name"`
-		MiniAvatar string    `json:"profile_avatar"`
-		Title      string    `json:"title"`
-		Caption    string    `json:"caption"`
-		CreatedAt  time.Time `json:"created_at"`
-	}{}
+	var subscriptionsFeedPosts = []feedPosts{}
 	if err := configs.Database.Raw(query).Scan(&subscriptionsFeedPosts).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
+	}
+
+	var finalResult = []feedPostsWithMedia{}
+	// SELECT * FROM `post_media` WHERE `post_media`.`post_id` IN (...postIds)
+	query = "SELECT * FROM post_media WHERE post_media.post_id IN ("
+	for _, post := range subscriptionsFeedPosts {
+		query += fmt.Sprintf("\"%s\",", post.Id)
+		finalResult = append(finalResult, feedPostsWithMedia{feedPosts: post})
+	}
+	query = strings.TrimSuffix(query, ",")
+	query += ")"
+
+	var postMedia = []models.PostMedia{}
+	if err := configs.Database.Raw(query).Scan(&postMedia).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
+	}
+
+	// TODO: if any time in the future posts are allowed to be made without media being required, you'll need to update this logic which maps the post media to its proper post
+	var i int = 0
+	var lastPostId string = subscriptionsFeedPosts[0].Id
+	for _, media := range postMedia {
+		if media.PostId != lastPostId {
+			i++
+		}
+		finalResult[i].Media = append(finalResult[i].Media, media)
+		lastPostId = media.PostId
 	}
 
 	// Get total number of feeds for post
@@ -100,7 +151,7 @@ func GetSubscriptionsFeed(c *fiber.Ctx) error {
 		"data": &fiber.Map{
 			"current_page": page,
 			"last_page":    int(math.Ceil(float64(numSubscriptionsFeedPosts) / float64(limit))),
-			"data":         subscriptionsFeedPosts,
+			"data":         finalResult,
 		},
 	}))
 }

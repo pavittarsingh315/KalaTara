@@ -142,49 +142,9 @@ func GetDislikesOfPost(c *fiber.Ctx) error {
 }
 
 func GetLikedPosts(c *fiber.Ctx) error {
-	var page int = c.Locals("page").(int)
-	var limit int = c.Locals("limit").(int)
-	// var offset int = c.Locals("offset").(int)
-	var reqProfile models.Profile = c.Locals("profile").(models.Profile)
-
-	// Get Liked Posts(paginated)
-	var likedPosts = []models.Post{}
-
-	// Get total number of liked posts
-	var numLikedPosts int64
-	if err := configs.Database.Model(&models.PostLike{}).Where("liker_id = ?", reqProfile.Id).Count(&numLikedPosts).Error; err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
-	}
-
-	return c.Status(fiber.StatusOK).JSON(responses.NewSuccessResponse(fiber.StatusOK, &fiber.Map{
-		"data": &fiber.Map{
-			"current_page": page,
-			"last_page":    int(math.Ceil(float64(numLikedPosts) / float64(limit))),
-			"data":         likedPosts,
-		},
-	}))
+	return c.Status(fiber.StatusOK).JSON(responses.NewSuccessResponse(fiber.StatusOK, &fiber.Map{"data": "Get liked posts."}))
 }
 
 func GetDisikedPosts(c *fiber.Ctx) error {
-	var page int = c.Locals("page").(int)
-	var limit int = c.Locals("limit").(int)
-	// var offset int = c.Locals("offset").(int)
-	var reqProfile models.Profile = c.Locals("profile").(models.Profile)
-
-	// Get Liked Posts(paginated)
-	var dislikedPosts = []models.Post{}
-
-	// Get total number of liked posts
-	var numDislikedPosts int64
-	if err := configs.Database.Model(&models.PostDislike{}).Where("disliker_id = ?", reqProfile.Id).Count(&numDislikedPosts).Error; err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
-	}
-
-	return c.Status(fiber.StatusOK).JSON(responses.NewSuccessResponse(fiber.StatusOK, &fiber.Map{
-		"data": &fiber.Map{
-			"current_page": page,
-			"last_page":    int(math.Ceil(float64(numDislikedPosts) / float64(limit))),
-			"data":         dislikedPosts,
-		},
-	}))
+	return c.Status(fiber.StatusOK).JSON(responses.NewSuccessResponse(fiber.StatusOK, &fiber.Map{"data": "Get disliked posts."}))
 }
