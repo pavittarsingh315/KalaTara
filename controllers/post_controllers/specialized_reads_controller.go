@@ -50,30 +50,29 @@ func GetFollowingsFeed(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
 	}
 
+	// Create query to get the media objects of posts found in above query. Format is "SELECT * FROM post_media WHERE post_media.post_id IN (...postIds)"
 	var finalResult = []feedPostsWithMedia{}
-	// SELECT * FROM `post_media` WHERE `post_media`.`post_id` IN (...postIds)
 	query = "SELECT * FROM post_media WHERE post_media.post_id IN ("
 	for _, post := range followingFeedPosts {
 		query += fmt.Sprintf("\"%s\",", post.Id)
 		finalResult = append(finalResult, feedPostsWithMedia{feedPosts: post})
 	}
 	query = strings.TrimSuffix(query, ",")
-	query += ")"
+	query += ") ORDER BY created_at DESC"
 
+	// Execute query
 	var postMedia = []models.PostMedia{}
 	if err := configs.Database.Raw(query).Scan(&postMedia).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
 	}
 
-	// TODO: if any time in the future posts are allowed to be made without media being required, you'll need to update this logic which maps the post media to its proper post
+	// Map media objects found to their proper post
 	var i int = 0
-	var lastPostId string = followingFeedPosts[0].Id
 	for _, media := range postMedia {
-		if media.PostId != lastPostId {
+		for media.PostId != followingFeedPosts[i].Id {
 			i++
 		}
 		finalResult[i].Media = append(finalResult[i].Media, media)
-		lastPostId = media.PostId
 	}
 
 	// Get total number of feeds for post
@@ -114,30 +113,29 @@ func GetSubscriptionsFeed(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
 	}
 
+	// Create query to get the media objects of posts found in above query. Format is "SELECT * FROM post_media WHERE post_media.post_id IN (...postIds)"
 	var finalResult = []feedPostsWithMedia{}
-	// SELECT * FROM `post_media` WHERE `post_media`.`post_id` IN (...postIds)
 	query = "SELECT * FROM post_media WHERE post_media.post_id IN ("
 	for _, post := range subscriptionsFeedPosts {
 		query += fmt.Sprintf("\"%s\",", post.Id)
 		finalResult = append(finalResult, feedPostsWithMedia{feedPosts: post})
 	}
 	query = strings.TrimSuffix(query, ",")
-	query += ")"
+	query += ") ORDER BY created_at DESC"
 
+	// Execute query
 	var postMedia = []models.PostMedia{}
 	if err := configs.Database.Raw(query).Scan(&postMedia).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
 	}
 
-	// TODO: if any time in the future posts are allowed to be made without media being required, you'll need to update this logic which maps the post media to its proper post
+	// Map media objects found to their proper post
 	var i int = 0
-	var lastPostId string = subscriptionsFeedPosts[0].Id
 	for _, media := range postMedia {
-		if media.PostId != lastPostId {
+		for media.PostId != subscriptionsFeedPosts[i].Id {
 			i++
 		}
 		finalResult[i].Media = append(finalResult[i].Media, media)
-		lastPostId = media.PostId
 	}
 
 	// Get total number of feeds for post

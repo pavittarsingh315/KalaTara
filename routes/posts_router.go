@@ -12,6 +12,7 @@ func PostsRouter(group fiber.Router) {
 	crudRouter(router)
 	specializedReadsRouter(router)
 	reactionsRouter(router)
+	bookmarksRouter(router)
 }
 
 func crudRouter(group fiber.Router) {
@@ -44,6 +45,14 @@ func reactionsRouter(group fiber.Router) {
 	router.Get("/get/likes/:postId", middleware.UserAuthHandler, middleware.PaginationHandler, postcontrollers.GetLikesOfPost)
 	router.Get("/get/dislikes/:postId", middleware.UserAuthHandler, middleware.PaginationHandler, postcontrollers.GetDislikesOfPost)
 
-	router.Get("liked/get", middleware.UserAuthHandler, middleware.PaginationHandler, postcontrollers.GetLikedPosts)
-	router.Get("disliked/get", middleware.UserAuthHandler, middleware.PaginationHandler, postcontrollers.GetDisikedPosts)
+	router.Get("/liked/get", middleware.UserAuthHandler, middleware.PaginationHandler, postcontrollers.GetLikedPosts)
+	router.Get("/disliked/get", middleware.UserAuthHandler, middleware.PaginationHandler, postcontrollers.GetDisikedPosts)
+}
+
+func bookmarksRouter(group fiber.Router) {
+	router := group // domain/api/posts
+
+	router.Post("/bookmark/:postId", middleware.UserAuthHandler, postcontrollers.BookmarkPost)
+	router.Delete("/remove/bookmark/:postId", middleware.UserAuthHandler, postcontrollers.RemoveBookmark)
+	router.Get("bookmarked/get", middleware.UserAuthHandler, middleware.PaginationHandler, postcontrollers.GetBookmarkedPosts)
 }
