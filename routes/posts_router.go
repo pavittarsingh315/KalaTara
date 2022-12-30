@@ -40,4 +40,10 @@ func reactionsRouter(group fiber.Router) {
 	router.Post("/dislike/:postId", middleware.UserAuthHandler, postcontrollers.DislikePost)
 	router.Delete("/remove/like/:postId", middleware.UserAuthHandler, postcontrollers.RemoveLike)
 	router.Delete("/remove/dislike/:postId", middleware.UserAuthHandler, postcontrollers.RemoveDislike)
+
+	router.Get("/get/likes/:postId", middleware.UserAuthHandler, middleware.PaginationHandler, postcontrollers.GetLikesOfPost)
+	router.Get("/get/dislikes/:postId", middleware.UserAuthHandler, middleware.PaginationHandler, postcontrollers.GetDislikesOfPost)
+
+	router.Get("liked/get", middleware.UserAuthHandler, middleware.PaginationHandler, postcontrollers.GetLikedPosts)
+	router.Get("disliked/get", middleware.UserAuthHandler, middleware.PaginationHandler, postcontrollers.GetDisikedPosts)
 }
