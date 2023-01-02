@@ -13,19 +13,25 @@ import (
 )
 
 type feedPosts struct {
-	Id         string    `json:"id"`
-	ProfileId  string    `json:"profile_id"`
-	Username   string    `json:"profile_username"`
-	Name       string    `json:"profile_name"`
-	MiniAvatar string    `json:"profile_avatar"`
-	Title      string    `json:"title"`
-	Caption    string    `json:"caption"`
-	CreatedAt  time.Time `json:"created_at"`
+	Id           string    `json:"id"`
+	ProfileId    string    `json:"profile_id"`
+	Username     string    `json:"profile_username"`
+	Name         string    `json:"profile_name"`
+	MiniAvatar   string    `json:"profile_avatar"`
+	Title        string    `json:"title"`
+	Caption      string    `json:"caption"`
+	LikerId      string    `json:"-"`
+	DislikerId   string    `json:"-"`
+	BookmarkerId string    `json:"-"`
+	CreatedAt    time.Time `json:"created_at"`
 }
 
 type feedPostsWithMedia struct {
 	feedPosts
-	Media []models.PostMedia `json:"media"`
+	DidLike     bool               `json:"did_like"`
+	DidDislike  bool               `json:"did_dislike"`
+	DidBookmark bool               `json:"did_bookmark"`
+	Media       []models.PostMedia `json:"media"`
 }
 
 func GetFollowingsFeed(c *fiber.Ctx) error {
@@ -35,44 +41,61 @@ func GetFollowingsFeed(c *fiber.Ctx) error {
 	var reqProfile models.Profile = c.Locals("profile").(models.Profile)
 
 	query := fmt.Sprintf(
-		"SELECT post.id, post.created_at, post.title, post.caption, post.profile_id, profile.username, profile.name, profile.mini_avatar"+
+		"SELECT post.id, post.created_at, post.title, post.caption, post.profile_id, profile.username, profile.name, profile.mini_avatar, post_likes.liker_id, post_dislikes.disliker_id, post_bookmarks.bookmarker_id"+
 			" FROM profiles as profile"+
 			" JOIN profile_followers"+
 			" ON profile_followers.follower_id = \"%s\" AND profile_followers.profile_id = profile.id"+
 			" JOIN posts as post"+
-			" ON post.profile_id = profile.id"+
-			" WHERE post.is_archived = %d AND post.for_subscribers_only = %d"+
+			" ON post.profile_id = profile.id AND post.is_archived = %d AND post.for_subscribers_only = %d"+
+			" LEFT JOIN post_likes"+
+			" ON post_likes.post_id = post.id AND post_likes.liker_id = \"%s\""+
+			" LEFT JOIN post_dislikes"+
+			" ON post_dislikes.post_id = post.id AND post_dislikes.disliker_id = \"%s\""+
+			" LEFT JOIN post_bookmarks"+
+			" ON post_bookmarks.post_id = post.id AND post_bookmarks.bookmarker_id = \"%s\""+
 			" ORDER BY post.created_at DESC LIMIT %d OFFSET %d",
-		reqProfile.Id, 0, 0, limit, offset,
+		reqProfile.Id, 0, 0, reqProfile.Id, reqProfile.Id, reqProfile.Id, limit, offset,
 	)
 	var followingFeedPosts = []feedPosts{}
 	if err := configs.Database.Raw(query).Scan(&followingFeedPosts).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
 	}
 
-	// Create query to get the media objects of posts found in above query. Format is "SELECT * FROM post_media WHERE post_media.post_id IN (...postIds)"
 	var finalResult = []feedPostsWithMedia{}
-	query = "SELECT * FROM post_media WHERE post_media.post_id IN ("
-	for _, post := range followingFeedPosts {
-		query += fmt.Sprintf("\"%s\",", post.Id)
-		finalResult = append(finalResult, feedPostsWithMedia{feedPosts: post})
-	}
-	query = strings.TrimSuffix(query, ",")
-	query += ") ORDER BY created_at DESC"
-
-	// Execute query
-	var postMedia = []models.PostMedia{}
-	if err := configs.Database.Raw(query).Scan(&postMedia).Error; err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
-	}
-
-	// Map media objects found to their proper post
-	var i int = 0
-	for _, media := range postMedia {
-		for media.PostId != followingFeedPosts[i].Id {
-			i++
+	if len(followingFeedPosts) > 0 {
+		// Create query to get the media objects of posts found in above query. Format is "SELECT * FROM post_media WHERE post_media.post_id IN (...postIds)"
+		query = "SELECT * FROM post_media WHERE post_media.post_id IN ("
+		for _, post := range followingFeedPosts {
+			query += fmt.Sprintf("\"%s\",", post.Id)
+			didLike, didDislike, didBookmark := false, false, false
+			if post.LikerId != "" {
+				didLike = true
+			}
+			if post.DislikerId != "" {
+				didDislike = true
+			}
+			if post.BookmarkerId != "" {
+				didBookmark = true
+			}
+			finalResult = append(finalResult, feedPostsWithMedia{feedPosts: post, DidLike: didLike, DidDislike: didDislike, DidBookmark: didBookmark})
 		}
-		finalResult[i].Media = append(finalResult[i].Media, media)
+		query = strings.TrimSuffix(query, ",")
+		query += ") ORDER BY created_at DESC"
+
+		// Execute query
+		var postMedia = []models.PostMedia{}
+		if err := configs.Database.Raw(query).Scan(&postMedia).Error; err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
+		}
+
+		// Map media objects found to their proper post
+		var i int = 0
+		for _, media := range postMedia {
+			for media.PostId != followingFeedPosts[i].Id {
+				i++
+			}
+			finalResult[i].Media = append(finalResult[i].Media, media)
+		}
 	}
 
 	// Get total number of feeds for post
@@ -98,44 +121,61 @@ func GetSubscriptionsFeed(c *fiber.Ctx) error {
 	var reqProfile models.Profile = c.Locals("profile").(models.Profile)
 
 	query := fmt.Sprintf(
-		"SELECT post.id, post.created_at, post.title, post.caption, post.profile_id, profile.username, profile.name, profile.mini_avatar"+
+		"SELECT post.id, post.created_at, post.title, post.caption, post.profile_id, profile.username, profile.name, profile.mini_avatar, post_likes.liker_id, post_dislikes.disliker_id, post_bookmarks.bookmarker_id"+
 			" FROM profiles as profile"+
 			" JOIN profile_subscribers"+
 			" ON profile_subscribers.subscriber_id = \"%s\" AND profile_subscribers.profile_id = profile.id"+
 			" JOIN posts as post"+
-			" ON post.profile_id = profile.id"+
-			" WHERE post.is_archived = %d AND post.for_subscribers_only = %d"+
+			" ON post.profile_id = profile.id AND post.is_archived = %d AND post.for_subscribers_only = %d"+
+			" LEFT JOIN post_likes"+
+			" ON post_likes.post_id = post.id AND post_likes.liker_id = \"%s\""+
+			" LEFT JOIN post_dislikes"+
+			" ON post_dislikes.post_id = post.id AND post_dislikes.disliker_id = \"%s\""+
+			" LEFT JOIN post_bookmarks"+
+			" ON post_bookmarks.post_id = post.id AND post_bookmarks.bookmarker_id = \"%s\""+
 			" ORDER BY post.created_at DESC LIMIT %d OFFSET %d",
-		reqProfile.Id, 0, 1, limit, offset,
+		reqProfile.Id, 0, 1, reqProfile.Id, reqProfile.Id, reqProfile.Id, limit, offset,
 	)
 	var subscriptionsFeedPosts = []feedPosts{}
 	if err := configs.Database.Raw(query).Scan(&subscriptionsFeedPosts).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
 	}
 
-	// Create query to get the media objects of posts found in above query. Format is "SELECT * FROM post_media WHERE post_media.post_id IN (...postIds)"
 	var finalResult = []feedPostsWithMedia{}
-	query = "SELECT * FROM post_media WHERE post_media.post_id IN ("
-	for _, post := range subscriptionsFeedPosts {
-		query += fmt.Sprintf("\"%s\",", post.Id)
-		finalResult = append(finalResult, feedPostsWithMedia{feedPosts: post})
-	}
-	query = strings.TrimSuffix(query, ",")
-	query += ") ORDER BY created_at DESC"
-
-	// Execute query
-	var postMedia = []models.PostMedia{}
-	if err := configs.Database.Raw(query).Scan(&postMedia).Error; err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
-	}
-
-	// Map media objects found to their proper post
-	var i int = 0
-	for _, media := range postMedia {
-		for media.PostId != subscriptionsFeedPosts[i].Id {
-			i++
+	if len(subscriptionsFeedPosts) > 0 {
+		// Create query to get the media objects of posts found in above query. Format is "SELECT * FROM post_media WHERE post_media.post_id IN (...postIds)"
+		query = "SELECT * FROM post_media WHERE post_media.post_id IN ("
+		for _, post := range subscriptionsFeedPosts {
+			query += fmt.Sprintf("\"%s\",", post.Id)
+			didLike, didDislike, didBookmark := false, false, false
+			if post.LikerId != "" {
+				didLike = true
+			}
+			if post.DislikerId != "" {
+				didDislike = true
+			}
+			if post.BookmarkerId != "" {
+				didBookmark = true
+			}
+			finalResult = append(finalResult, feedPostsWithMedia{feedPosts: post, DidLike: didLike, DidDislike: didDislike, DidBookmark: didBookmark})
 		}
-		finalResult[i].Media = append(finalResult[i].Media, media)
+		query = strings.TrimSuffix(query, ",")
+		query += ") ORDER BY created_at DESC"
+
+		// Execute query
+		var postMedia = []models.PostMedia{}
+		if err := configs.Database.Raw(query).Scan(&postMedia).Error; err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
+		}
+
+		// Map media objects found to their proper post
+		var i int = 0
+		for _, media := range postMedia {
+			for media.PostId != subscriptionsFeedPosts[i].Id {
+				i++
+			}
+			finalResult[i].Media = append(finalResult[i].Media, media)
+		}
 	}
 
 	// Get total number of feeds for post
