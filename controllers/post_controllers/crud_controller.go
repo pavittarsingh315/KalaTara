@@ -138,17 +138,16 @@ func GetPost(c *fiber.Ctx) error {
 func EditPost(c *fiber.Ctx) error {
 	var reqProfile models.Profile = c.Locals("profile").(models.Profile)
 	reqBody := struct {
-		Title              string `json:"title"`
-		Caption            string `json:"caption"`
-		ForSubscribersOnly *bool  `json:"for_subscribers_only"`
-		IsArchived         *bool  `json:"is_archived"`
+		Title      string `json:"title"`
+		Caption    string `json:"caption"`
+		IsArchived *bool  `json:"is_archived"`
 	}{}
 
 	if err := c.BodyParser(&reqBody); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": "Bad request..."}))
 	}
 
-	if reqBody.Title == "" || reqBody.Caption == "" || reqBody.IsArchived == nil || reqBody.ForSubscribersOnly == nil {
+	if reqBody.Title == "" || reqBody.Caption == "" || reqBody.IsArchived == nil {
 		return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": "Please include all fields."}))
 	}
 
@@ -167,7 +166,7 @@ func EditPost(c *fiber.Ctx) error {
 	// Update the fields
 	var base = models.Base{Id: c.Params("postId")}
 	var post = models.Post{Base: base, ProfileId: reqProfile.Id}
-	if err := configs.Database.Model(&post).Updates(map[string]interface{}{"title": reqBody.Title, "caption": reqBody.Caption, "for_subscribers_only": *reqBody.ForSubscribersOnly, "is_archived": *reqBody.IsArchived}).Error; err != nil {
+	if err := configs.Database.Model(&post).Updates(map[string]interface{}{"title": reqBody.Title, "caption": reqBody.Caption, "is_archived": *reqBody.IsArchived}).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
 	}
 
