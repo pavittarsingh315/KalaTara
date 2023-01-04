@@ -23,12 +23,7 @@ func InitDatabase() {
 	log.Println("Database connection established...")
 	log.Println("Running migrations...")
 
-	if err = db.SetupJoinTable(&models.Profile{}, "Followers", &models.ProfileFollower{}); err != nil {
-		log.Fatal("Error during join table setup...")
-		panic(err)
-	}
-
-	if err = db.SetupJoinTable(&models.Profile{}, "Subscribers", &models.ProfileSubscriber{}); err != nil {
+	if err = setupJoinTables(db); err != nil {
 		log.Fatal("Error during join table setup...")
 		panic(err)
 	}
@@ -48,4 +43,28 @@ func InitDatabase() {
 	log.Println("Migrations ran successfully!")
 
 	Database = db
+}
+
+func setupJoinTables(db *gorm.DB) error {
+	if err := db.SetupJoinTable(&models.Profile{}, "Followers", &models.ProfileFollower{}); err != nil {
+		return err
+	}
+
+	if err := db.SetupJoinTable(&models.Profile{}, "Subscribers", &models.ProfileSubscriber{}); err != nil {
+		return err
+	}
+
+	if err := db.SetupJoinTable(&models.Post{}, "Likes", &models.PostLike{}); err != nil {
+		return err
+	}
+
+	if err := db.SetupJoinTable(&models.Post{}, "Dislikes", &models.PostDislike{}); err != nil {
+		return err
+	}
+
+	if err := db.SetupJoinTable(&models.Post{}, "Bookmarks", &models.PostBookmark{}); err != nil {
+		return err
+	}
+
+	return nil
 }

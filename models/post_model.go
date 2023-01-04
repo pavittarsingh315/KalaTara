@@ -2,6 +2,7 @@ package models
 
 import (
 	"errors"
+	"time"
 
 	"gorm.io/gorm"
 )
@@ -23,6 +24,9 @@ type Post struct {
 	ForSubscribersOnly bool        `json:"for_subscribers_only"`
 	IsArchived         bool        `json:"is_archived"`
 	Media              []PostMedia `json:"media"`
+	Likes              []Profile   `json:"likes" gorm:"many2many:post_likes"`
+	Dislikes           []Profile   `json:"dislikes" gorm:"many2many:post_dislikes"`
+	Bookmarks          []Profile   `json:"bookmarks" gorm:"many2many:post_bookmarks"`
 }
 
 type PostMedia struct {
@@ -41,4 +45,25 @@ func (pm *PostMedia) BeforeCreate(tx *gorm.DB) error {
 		return nil
 	}
 	return errors.New("only one of the following fields can be true: is_image, is_video, is_audio. one field also must be true")
+}
+
+// This is a custom junction table for the many-to-many relationship between a Post and a Liker(profile)
+type PostLike struct {
+	PostId    string    `json:"post_id" gorm:"primary_key;type:uuid;<-:create"`  // allow read and create (not update)
+	ProfileId string    `json:"liker_id" gorm:"primary_key;type:uuid;<-:create"` // allow read and create (not update)
+	CreatedAt time.Time `json:"created_at" gorm:"index;<-:create"`               // allow read and create (not update)
+}
+
+// This is a custom junction table for the many-to-many relationship between a Post and a Disliker(profile)
+type PostDislike struct {
+	PostId    string    `json:"post_id" gorm:"primary_key;type:uuid;<-:create"`     // allow read and create (not update)
+	ProfileId string    `json:"disliker_id" gorm:"primary_key;type:uuid;<-:create"` // allow read and create (not update)
+	CreatedAt time.Time `json:"created_at" gorm:"index;<-:create"`                  // allow read and create (not update)
+}
+
+// This is a custom junction table for the many-to-many relationship between a Post and a Disliker(profile)
+type PostBookmark struct {
+	PostId    string    `json:"post_id" gorm:"primary_key;type:uuid;<-:create"`       // allow read and create (not update)
+	ProfileId string    `json:"bookmarker_id" gorm:"primary_key;type:uuid;<-:create"` // allow read and create (not update)
+	CreatedAt time.Time `json:"created_at" gorm:"index;<-:create"`                    // allow read and create (not update)
 }
