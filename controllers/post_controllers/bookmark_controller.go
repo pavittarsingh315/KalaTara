@@ -100,19 +100,17 @@ func GetBookmarkedPosts(c *fiber.Ctx) error {
 			"(SELECT GROUP_CONCAT(m.is_audio, '') FROM post_media m WHERE m.post_id = p.id ORDER BY m.position) AS is_audios, "+
 			"COUNT(l.post_id) AS num_likes, COUNT(d.post_id) AS num_dislikes, COUNT(b.post_id) AS num_bookmarks, "+
 			"SUM(CASE WHEN l.profile_id = \"%s\" THEN 1 ELSE 0 END) AS is_liked, "+
-			"SUM(CASE WHEN d.profile_id = \"%s\" THEN 1 ELSE 0 END) AS is_disliked, "+
-			"SUM(CASE WHEN b.profile_id = \"%s\" THEN 1 ELSE 0 END) AS is_bookmarked "+
+			"SUM(CASE WHEN d.profile_id = \"%s\" THEN 1 ELSE 0 END) AS is_disliked "+
 			"FROM post_bookmarks b "+
 			"JOIN posts p ON b.post_id = p.id "+
 			"JOIN profiles u ON p.profile_id = u.id "+
 			"LEFT JOIN post_likes l ON p.id = l.post_id "+
 			"LEFT JOIN post_dislikes d ON p.id = d.post_id "+
-			"LEFT JOIN post_bookmarks b2 ON p.id = b2.post_id "+
 			"WHERE b.profile_id = \"%s\" "+
 			"GROUP BY p.id, u.id "+
 			"ORDER BY b.created_at DESC "+
 			"LIMIT %d OFFSET %d",
-		reqProfile.Id, reqProfile.Id, reqProfile.Id, reqProfile.Id, limit, offset,
+		reqProfile.Id, reqProfile.Id, reqProfile.Id, limit, offset,
 	)
 	var unpreparedBookmarkedPosts = []postsWithoutMedia{}
 	if err := configs.Database.Raw(query).Scan(&unpreparedBookmarkedPosts).Error; err != nil {
@@ -121,6 +119,7 @@ func GetBookmarkedPosts(c *fiber.Ctx) error {
 
 	var bookmarkedPosts = []postsWithMedia{}
 	for _, post := range unpreparedBookmarkedPosts { // The limit is capped at 25 and the post_media for a post is capped at 5. This loop has 125 iterations at most
+		post.IsBookmarked = true
 		var mediaObjs = []miniPostMedia{}
 		mediaUrls := strings.Split(post.MediaUrls, ",")
 		isImages := strings.Split(post.IsImages, ",")
