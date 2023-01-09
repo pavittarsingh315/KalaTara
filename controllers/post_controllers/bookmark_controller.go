@@ -28,9 +28,9 @@ type postsWithoutMedia struct {
 	IsVideos  string `json:"-" gorm:"column:is_videos"`
 	IsAudios  string `json:"-" gorm:"column:is_audios"`
 
-	NumLikes     string `json:"num_likes"`
-	NumDislikes  string `json:"num_dislikes"`
-	NumBookmarks string `json:"num_bookmarks"`
+	NumLikes     int `json:"num_likes"`
+	NumDislikes  int `json:"num_dislikes"`
+	NumBookmarks int `json:"num_bookmarks"`
 
 	IsLiked      bool `json:"is_liked"`
 	IsDisliked   bool `json:"is_disliked"`
