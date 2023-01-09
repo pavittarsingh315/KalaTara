@@ -117,19 +117,7 @@ func GetBookmarkedPosts(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
 	}
 
-	var bookmarkedPosts = []postsWithMedia{}
-	for _, post := range unpreparedBookmarkedPosts { // The limit is capped at 25 and the post_media for a post is capped at 5. This loop has 125 iterations at most
-		post.IsBookmarked = true
-		var mediaObjs = []miniPostMedia{}
-		mediaUrls := strings.Split(post.MediaUrls, ",")
-		isImages := strings.Split(post.IsImages, ",")
-		isVideos := strings.Split(post.IsVideos, ",")
-		isAudios := strings.Split(post.IsAudios, ",")
-		for i, url := range mediaUrls {
-			mediaObjs = append(mediaObjs, miniPostMedia{MediaUrl: url, IsImage: stringToBool(isImages[i]), IsVideo: stringToBool(isVideos[i]), IsAudio: stringToBool(isAudios[i])})
-		}
-		bookmarkedPosts = append(bookmarkedPosts, postsWithMedia{postsWithoutMedia: post, Media: mediaObjs})
-	}
+	var bookmarkedPosts = preparePosts(&unpreparedBookmarkedPosts, true, false, false)
 
 	var numBookmarks int64
 	if err := configs.Database.Table("post_bookmarks").Where("profile_id = ?", reqProfile.Id).Count(&numBookmarks).Error; err != nil {
@@ -143,6 +131,37 @@ func GetBookmarkedPosts(c *fiber.Ctx) error {
 			"data":         bookmarkedPosts,
 		},
 	}))
+}
+
+/*
+Takes in an array of posts without their media objects properly structured and returns an array with properly structured media objects.
+Also takes in three booleans which mark each post as the variable name suggests. This is for when we know for a fact that a certain batch of posts is bookmarked/liked/disliked
+*/
+func preparePosts(unpreparedPosts *[]postsWithoutMedia, markPostsAsBookmarked bool, markPostsAsLiked bool, markPostsAsDisliked bool) []postsWithMedia {
+	var preppedPosts = []postsWithMedia{}
+
+	for _, post := range *unpreparedPosts { // The limit of results of paginated data is capped at 25 and the post_media for a post is capped at 5. Therefore this loop has at most 125 iterations
+		if markPostsAsBookmarked {
+			post.IsBookmarked = true
+		}
+		if markPostsAsLiked {
+			post.IsLiked = true
+		}
+		if markPostsAsDisliked {
+			post.IsDisliked = true
+		}
+		var mediaObjs = []miniPostMedia{}
+		mediaUrls := strings.Split(post.MediaUrls, ",")
+		isImages := strings.Split(post.IsImages, ",")
+		isVideos := strings.Split(post.IsVideos, ",")
+		isAudios := strings.Split(post.IsAudios, ",")
+		for i, url := range mediaUrls {
+			mediaObjs = append(mediaObjs, miniPostMedia{MediaUrl: url, IsImage: stringToBool(isImages[i]), IsVideo: stringToBool(isVideos[i]), IsAudio: stringToBool(isAudios[i])})
+		}
+		preppedPosts = append(preppedPosts, postsWithMedia{postsWithoutMedia: post, Media: mediaObjs})
+	}
+
+	return preppedPosts
 }
 
 func stringToBool(s string) bool {

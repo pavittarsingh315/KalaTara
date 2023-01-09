@@ -3,7 +3,6 @@ package postcontrollers
 import (
 	"fmt"
 	"math"
-	"strings"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -174,19 +173,7 @@ func GetLikedPosts(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
 	}
 
-	var likedPosts = []postsWithMedia{}
-	for _, post := range unpreparedLikedPosts { // The limit is capped at 25 and the post_media for a post is capped at 5. This loop has 125 iterations at most
-		post.IsLiked = true
-		var mediaObjs = []miniPostMedia{}
-		mediaUrls := strings.Split(post.MediaUrls, ",")
-		isImages := strings.Split(post.IsImages, ",")
-		isVideos := strings.Split(post.IsVideos, ",")
-		isAudios := strings.Split(post.IsAudios, ",")
-		for i, url := range mediaUrls {
-			mediaObjs = append(mediaObjs, miniPostMedia{MediaUrl: url, IsImage: stringToBool(isImages[i]), IsVideo: stringToBool(isVideos[i]), IsAudio: stringToBool(isAudios[i])})
-		}
-		likedPosts = append(likedPosts, postsWithMedia{postsWithoutMedia: post, Media: mediaObjs})
-	}
+	var likedPosts = preparePosts(&unpreparedLikedPosts, false, true, false)
 
 	var numLikes int64
 	if err := configs.Database.Table("post_likes").Where("profile_id = ?", reqProfile.Id).Count(&numLikes).Error; err != nil {
@@ -234,19 +221,7 @@ func GetDisikedPosts(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
 	}
 
-	var dislikedPosts = []postsWithMedia{}
-	for _, post := range unpreparedDislikedPosts { // The limit is capped at 25 and the post_media for a post is capped at 5. This loop has 125 iterations at most
-		post.IsDisliked = true
-		var mediaObjs = []miniPostMedia{}
-		mediaUrls := strings.Split(post.MediaUrls, ",")
-		isImages := strings.Split(post.IsImages, ",")
-		isVideos := strings.Split(post.IsVideos, ",")
-		isAudios := strings.Split(post.IsAudios, ",")
-		for i, url := range mediaUrls {
-			mediaObjs = append(mediaObjs, miniPostMedia{MediaUrl: url, IsImage: stringToBool(isImages[i]), IsVideo: stringToBool(isVideos[i]), IsAudio: stringToBool(isAudios[i])})
-		}
-		dislikedPosts = append(dislikedPosts, postsWithMedia{postsWithoutMedia: post, Media: mediaObjs})
-	}
+	var dislikedPosts = preparePosts(&unpreparedDislikedPosts, false, false, true)
 
 	var numDislikes int64
 	if err := configs.Database.Table("post_dislikes").Where("profile_id = ?", reqProfile.Id).Count(&numDislikes).Error; err != nil {
