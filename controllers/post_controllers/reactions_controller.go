@@ -154,19 +154,19 @@ func GetLikedPosts(c *fiber.Ctx) error {
 			"(SELECT GROUP_CONCAT(m.is_image, '') FROM post_media m WHERE m.post_id = p.id ORDER BY m.position) AS is_images, "+
 			"(SELECT GROUP_CONCAT(m.is_video, '') FROM post_media m WHERE m.post_id = p.id ORDER BY m.position) AS is_videos, "+
 			"(SELECT GROUP_CONCAT(m.is_audio, '') FROM post_media m WHERE m.post_id = p.id ORDER BY m.position) AS is_audios, "+
-			"COUNT(l.post_id) AS num_likes, COUNT(d.post_id) AS num_dislikes, COUNT(b.post_id) AS num_bookmarks, "+
-			"SUM(CASE WHEN d.profile_id = \"%s\" THEN 1 ELSE 0 END) AS is_disliked, "+
-			"SUM(CASE WHEN b.profile_id = \"%s\" THEN 1 ELSE 0 END) AS is_bookmarked "+
+			"l2.num_likes, d.num_dislikes, b.num_bookmarks, "+
+			"(CASE WHEN (SELECT profile_id FROM post_dislikes WHERE post_id = p.id AND profile_id = \"%s\") IS NOT NULL THEN 1 ELSE 0 END) AS is_disliked, "+
+			"(CASE WHEN (SELECT profile_id FROM post_bookmarks WHERE post_id = p.id AND profile_id = \"%s\") IS NOT NULL THEN 1 ELSE 0 END) AS is_bookmarked "+
 			"FROM post_likes l "+
-			"JOIN posts p ON l.post_id = p.id "+
+			"JOIN posts p ON l.post_id = p.id AND l.profile_id = \"%s\" AND p.is_archived = %d "+
 			"JOIN profiles u ON p.profile_id = u.id "+
-			"LEFT JOIN post_bookmarks b ON p.id = b.post_id "+
-			"LEFT JOIN post_dislikes d ON p.id = d.post_id "+
-			"WHERE l.profile_id = \"%s\" "+
+			"LEFT JOIN (SELECT post_id, COUNT(*) AS num_likes FROM post_likes GROUP by post_id) l2 ON p.id = l2.post_id "+
+			"LEFT JOIN (SELECT post_id, COUNT(*) AS num_dislikes FROM post_dislikes GROUP by post_id) d ON p.id = d.post_id "+
+			"LEFT JOIN (SELECT post_id, COUNT(*) AS num_bookmarks FROM post_bookmarks GROUP by post_id) b ON p.id = b.post_id "+
 			"GROUP BY p.id, u.id "+
 			"ORDER BY l.created_at DESC "+
 			"LIMIT %d OFFSET %d",
-		reqProfile.Id, reqProfile.Id, reqProfile.Id, limit, offset,
+		reqProfile.Id, reqProfile.Id, reqProfile.Id, 0, limit, offset,
 	)
 	var unpreparedLikedPosts = []postsWithoutMedia{}
 	if err := configs.Database.Raw(query).Scan(&unpreparedLikedPosts).Error; err != nil {
@@ -202,19 +202,19 @@ func GetDisikedPosts(c *fiber.Ctx) error {
 			"(SELECT GROUP_CONCAT(m.is_image, '') FROM post_media m WHERE m.post_id = p.id ORDER BY m.position) AS is_images, "+
 			"(SELECT GROUP_CONCAT(m.is_video, '') FROM post_media m WHERE m.post_id = p.id ORDER BY m.position) AS is_videos, "+
 			"(SELECT GROUP_CONCAT(m.is_audio, '') FROM post_media m WHERE m.post_id = p.id ORDER BY m.position) AS is_audios, "+
-			"COUNT(l.post_id) AS num_likes, COUNT(d.post_id) AS num_dislikes, COUNT(b.post_id) AS num_bookmarks, "+
-			"SUM(CASE WHEN l.profile_id = \"%s\" THEN 1 ELSE 0 END) AS is_liked, "+
-			"SUM(CASE WHEN b.profile_id = \"%s\" THEN 1 ELSE 0 END) AS is_bookmarked "+
+			"l.num_likes, d2.num_dislikes, b.num_bookmarks, "+
+			"(CASE WHEN (SELECT profile_id FROM post_likes WHERE post_id = p.id AND profile_id = \"%s\") IS NOT NULL THEN 1 ELSE 0 END) AS is_liked, "+
+			"(CASE WHEN (SELECT profile_id FROM post_bookmarks WHERE post_id = p.id AND profile_id = \"%s\") IS NOT NULL THEN 1 ELSE 0 END) AS is_bookmarked "+
 			"FROM post_dislikes d "+
-			"JOIN posts p ON d.post_id = p.id "+
+			"JOIN posts p ON d.post_id = p.id AND d.profile_id = \"%s\" AND p.is_archived = %d"+
 			"JOIN profiles u ON p.profile_id = u.id "+
-			"LEFT JOIN post_likes l ON p.id = l.post_id "+
-			"LEFT JOIN post_bookmarks b ON p.id = b.post_id "+
-			"WHERE d.profile_id = \"%s\" "+
+			"LEFT JOIN (SELECT post_id, COUNT(*) AS num_likes FROM post_likes GROUP by post_id) l ON p.id = l.post_id "+
+			"LEFT JOIN (SELECT post_id, COUNT(*) AS num_dislikes FROM post_dislikes GROUP by post_id) d2 ON p.id = d2.post_id "+
+			"LEFT JOIN (SELECT post_id, COUNT(*) AS num_bookmarks FROM post_bookmarks GROUP by post_id) b ON p.id = b.post_id "+
 			"GROUP BY p.id, u.id "+
 			"ORDER BY d.created_at DESC "+
 			"LIMIT %d OFFSET %d",
-		reqProfile.Id, reqProfile.Id, reqProfile.Id, limit, offset,
+		reqProfile.Id, reqProfile.Id, reqProfile.Id, 0, limit, offset,
 	)
 	var unpreparedDislikedPosts = []postsWithoutMedia{}
 	if err := configs.Database.Raw(query).Scan(&unpreparedDislikedPosts).Error; err != nil {
