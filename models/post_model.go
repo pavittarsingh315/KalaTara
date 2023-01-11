@@ -21,7 +21,7 @@ type Post struct {
 	ProfileId          string      `json:"profile_id" gorm:"size:191"` // for info on the size parameter: https://github.com/go-gorm/gorm/issues/3369
 	Title              string      `json:"title"`
 	Caption            string      `json:"caption"`
-	ForSubscribersOnly bool        `json:"for_subscribers_only"`
+	ForSubscribersOnly bool        `json:"for_subscribers_only" gorm:"<-:create"` // allow read and create (not update)
 	IsArchived         bool        `json:"is_archived"`
 	Media              []PostMedia `json:"media"`
 	Likes              []Profile   `json:"likes" gorm:"many2many:post_likes"`
