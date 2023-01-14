@@ -25,11 +25,11 @@ type Post struct {
 	Caption            string        `json:"caption"`
 	ForSubscribersOnly bool          `json:"for_subscribers_only" gorm:"<-:create"` // allow read and create (not update)
 	IsArchived         bool          `json:"is_archived"`
-	Media              []PostMedia   `json:"media"`
-	Likes              []Profile     `json:"likes" gorm:"many2many:post_likes"`
-	Dislikes           []Profile     `json:"dislikes" gorm:"many2many:post_dislikes"`
-	Bookmarks          []Profile     `json:"bookmarks" gorm:"many2many:post_bookmarks"`
-	Comments           []PostComment `json:"comments"`
+	Media              []PostMedia   `json:"media" gorm:"constraint:OnDelete:CASCADE;"`
+	Likes              []Profile     `json:"likes" gorm:"many2many:post_likes;constraint:OnDelete:CASCADE;"`
+	Dislikes           []Profile     `json:"dislikes" gorm:"many2many:post_dislikes;constraint:OnDelete:CASCADE;"`
+	Bookmarks          []Profile     `json:"bookmarks" gorm:"many2many:post_bookmarks;constraint:OnDelete:CASCADE;"`
+	Comments           []PostComment `json:"comments" gorm:"constraint:OnDelete:CASCADE;"`
 }
 
 type PostMedia struct {
@@ -56,8 +56,8 @@ type PostComment struct {
 	CommenterId        string       `json:"commenter_id" gorm:"size:191"`          // for info on the size parameter: https://github.com/go-gorm/gorm/issues/3369
 	CommentRepliedToId string       `json:"comment_replied_to_id" gorm:"size:191"` // for info on the size parameter: https://github.com/go-gorm/gorm/issues/3369
 	Body               string       `json:"body"`
-	Commenter          Profile      `json:"commenter" gorm:"foreignKey:CommenterId"`
-	CommentRepliedTo   *PostComment `json:"comment_replied_to" gorm:"foreignKey:CommentRepliedToId"`
+	Commenter          Profile      `json:"commenter" gorm:"foreignKey:CommenterId;constraint:OnDelete:CASCADE;"`
+	CommentRepliedTo   *PostComment `json:"comment_replied_to" gorm:"foreignKey:CommentRepliedToId;constraint:OnDelete:CASCADE;"`
 	IsEdited           bool         `json:"is_edited"`
 }
 

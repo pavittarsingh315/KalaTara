@@ -23,7 +23,7 @@ type User struct {
 	Birthday  time.Time `json:"birthday"`
 	LastLogin time.Time `json:"last_login"`
 	BanTill   time.Time `json:"ban_till"`
-	Profile   Profile   `json:"profile"`
+	Profile   Profile   `json:"profile" gorm:"constraint:OnDelete:CASCADE;"`
 }
 
 func (u *User) BeforeCreate(tx *gorm.DB) error {

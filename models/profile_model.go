@@ -28,10 +28,10 @@ type Profile struct {
 	Avatar        string          `json:"avatar"`
 	MiniAvatar    string          `json:"mini_avatar"`
 	Birthday      time.Time       `json:"birthday"`
-	Followers     []*Profile      `json:"followers" gorm:"many2many:profile_followers"`
-	Subscribers   []*Profile      `json:"subscribers" gorm:"many2many:profile_subscribers"`
-	SearchHistory []SearchHistory `json:"search_history"`
-	Posts         []Post          `json:"posts"`
+	Followers     []*Profile      `json:"followers" gorm:"many2many:profile_followers;constraint:OnDelete:CASCADE;"`
+	Subscribers   []*Profile      `json:"subscribers" gorm:"many2many:profile_subscribers;constraint:OnDelete:CASCADE;"`
+	SearchHistory []SearchHistory `json:"search_history" gorm:"constraint:OnDelete:CASCADE;"`
+	Posts         []Post          `json:"posts" gorm:"constraint:OnDelete:CASCADE;"`
 }
 
 // This is a custom junction table for the self-referencing many-to-many relationship between a Profile and a Follower
