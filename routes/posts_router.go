@@ -13,6 +13,7 @@ func PostsRouter(group fiber.Router) {
 	specializedReadsRouter(router)
 	reactionsRouter(router)
 	bookmarksRouter(router)
+	commentsRouter(router)
 }
 
 func crudRouter(group fiber.Router) {
@@ -55,4 +56,20 @@ func bookmarksRouter(group fiber.Router) {
 	router.Post("/bookmark/:postId", middleware.UserAuthHandler, postcontrollers.BookmarkPost)
 	router.Delete("/remove/bookmark/:postId", middleware.UserAuthHandler, postcontrollers.RemoveBookmark)
 	router.Get("bookmarked/get", middleware.UserAuthHandler, middleware.PaginationHandler, postcontrollers.GetBookmarkedPosts)
+}
+
+func commentsRouter(group fiber.Router) {
+	router := group.Group("/comments") // domain/api/posts/comments
+
+	router.Get("/get/:postId", middleware.UserAuthHandler, middleware.PaginationHandler, postcontrollers.GetComments)
+	router.Get("/:commentId/replies/get", middleware.UserAuthHandler, middleware.PaginationHandler, postcontrollers.GetReplies)
+
+	router.Post("/create/:postId", middleware.UserAuthHandler, postcontrollers.CreateComment)
+	router.Delete("/:commentId/remove", middleware.UserAuthHandler, postcontrollers.DeleteComment)
+	router.Put("/:commentId/edit", middleware.UserAuthHandler, postcontrollers.EditComment)
+
+	router.Post("/:commentId/like", middleware.UserAuthHandler, postcontrollers.LikeComment)
+	router.Post("/:commentId/dislike", middleware.UserAuthHandler, postcontrollers.DislikeComment)
+	router.Delete("/:commentId/like/remove", middleware.UserAuthHandler, postcontrollers.RemoveLikeFromComment)
+	router.Delete("/:commentId/dislike/remove", middleware.UserAuthHandler, postcontrollers.RemoveDislikeFromComment)
 }
