@@ -3,6 +3,7 @@ package postcontrollers
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/rivo/uniseg"
@@ -103,19 +104,69 @@ func RemoveComment(c *fiber.Ctx) error {
 }
 
 func LikeComment(c *fiber.Ctx) error {
-	return c.Status(fiber.StatusOK).JSON(responses.NewSuccessResponse(fiber.StatusOK, &fiber.Map{"data": "Like Comment."}))
+	var reqProfile models.Profile = c.Locals("profile").(models.Profile)
+
+	// Delete the dislike object(if it exists)
+	var dislikeObj models.CommentDislike
+	if err := configs.Database.Table("comment_dislikes").Delete(&dislikeObj, "comment_id = ? AND profile_id = ?", c.Params("commentId"), reqProfile.Id).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
+	}
+
+	newLikeObj := models.CommentLike{
+		CommentId: c.Params("commentId"),
+		ProfileId: reqProfile.Id,
+		CreatedAt: time.Now(),
+	}
+	if err := configs.Database.Table("comment_likes").Where("comment_id = ? AND profile_id = ?", newLikeObj.CommentId, newLikeObj.ProfileId).FirstOrCreate(&newLikeObj).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
+	}
+
+	return c.Status(fiber.StatusOK).JSON(responses.NewSuccessResponse(fiber.StatusOK, &fiber.Map{"data": "Comment has been liked."}))
 }
 
 func DislikeComment(c *fiber.Ctx) error {
-	return c.Status(fiber.StatusOK).JSON(responses.NewSuccessResponse(fiber.StatusOK, &fiber.Map{"data": "Dislike Comment."}))
+	var reqProfile models.Profile = c.Locals("profile").(models.Profile)
+
+	// Delete the like object(if it exists)
+	var likeObj models.CommentLike
+	if err := configs.Database.Table("comment_likes").Delete(&likeObj, "comment_id = ? AND profile_id = ?", c.Params("commentId"), reqProfile.Id).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
+	}
+
+	newDislikeObj := models.CommentDislike{
+		CommentId: c.Params("commentId"),
+		ProfileId: reqProfile.Id,
+		CreatedAt: time.Now(),
+	}
+	if err := configs.Database.Table("comment_dislikes").Where("comment_id = ? AND profile_id = ?", newDislikeObj.CommentId, newDislikeObj.ProfileId).FirstOrCreate(&newDislikeObj).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
+	}
+
+	return c.Status(fiber.StatusOK).JSON(responses.NewSuccessResponse(fiber.StatusOK, &fiber.Map{"data": "Comment has been disliked."}))
 }
 
 func RemoveLikeFromComment(c *fiber.Ctx) error {
-	return c.Status(fiber.StatusOK).JSON(responses.NewSuccessResponse(fiber.StatusOK, &fiber.Map{"data": "Remove Like From Comment."}))
+	var reqProfile models.Profile = c.Locals("profile").(models.Profile)
+
+	// Delete the like object(if it exists)
+	var likeObj models.CommentLike
+	if err := configs.Database.Table("comment_likes").Delete(&likeObj, "comment_id = ? AND profile_id = ?", c.Params("commentId"), reqProfile.Id).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
+	}
+
+	return c.Status(fiber.StatusOK).JSON(responses.NewSuccessResponse(fiber.StatusOK, &fiber.Map{"data": "Like has been removed."}))
 }
 
 func RemoveDislikeFromComment(c *fiber.Ctx) error {
-	return c.Status(fiber.StatusOK).JSON(responses.NewSuccessResponse(fiber.StatusOK, &fiber.Map{"data": "Remove Dislike From Comment."}))
+	var reqProfile models.Profile = c.Locals("profile").(models.Profile)
+
+	// Delete the dislike object(if it exists)
+	var dislikeObj models.CommentDislike
+	if err := configs.Database.Table("comment_dislikes").Delete(&dislikeObj, "comment_id = ? AND profile_id = ?", c.Params("commentId"), reqProfile.Id).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
+	}
+
+	return c.Status(fiber.StatusOK).JSON(responses.NewSuccessResponse(fiber.StatusOK, &fiber.Map{"data": "Dislike has been removed."}))
 }
 
 func GetComments(c *fiber.Ctx) error {
