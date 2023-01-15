@@ -35,7 +35,7 @@ func InitDatabase() {
 		&models.SearchHistory{},
 		&models.Post{},
 		&models.PostMedia{},
-		&models.PostComment{},
+		&models.Comment{},
 	); err != nil {
 		log.Fatal("Error during migration...")
 		panic(err)
@@ -64,6 +64,14 @@ func setupJoinTables(db *gorm.DB) error {
 	}
 
 	if err := db.SetupJoinTable(&models.Post{}, "Bookmarks", &models.PostBookmark{}); err != nil {
+		return err
+	}
+
+	if err := db.SetupJoinTable(&models.Comment{}, "Likes", &models.CommentLike{}); err != nil {
+		return err
+	}
+
+	if err := db.SetupJoinTable(&models.Comment{}, "Dislikes", &models.CommentDislike{}); err != nil {
 		return err
 	}
 

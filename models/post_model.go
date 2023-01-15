@@ -20,16 +20,16 @@ import (
 
 type Post struct {
 	Base
-	ProfileId          string        `json:"profile_id" gorm:"size:191"` // for info on the size parameter: https://github.com/go-gorm/gorm/issues/3369
-	Title              string        `json:"title"`
-	Caption            string        `json:"caption"`
-	ForSubscribersOnly bool          `json:"for_subscribers_only" gorm:"<-:create"` // allow read and create (not update)
-	IsArchived         bool          `json:"is_archived"`
-	Media              []PostMedia   `json:"media" gorm:"constraint:OnDelete:CASCADE;"`
-	Likes              []Profile     `json:"likes" gorm:"many2many:post_likes;constraint:OnDelete:CASCADE;"`
-	Dislikes           []Profile     `json:"dislikes" gorm:"many2many:post_dislikes;constraint:OnDelete:CASCADE;"`
-	Bookmarks          []Profile     `json:"bookmarks" gorm:"many2many:post_bookmarks;constraint:OnDelete:CASCADE;"`
-	Comments           []PostComment `json:"comments" gorm:"constraint:OnDelete:CASCADE;"`
+	ProfileId          string      `json:"profile_id" gorm:"size:191"` // for info on the size parameter: https://github.com/go-gorm/gorm/issues/3369
+	Title              string      `json:"title"`
+	Caption            string      `json:"caption"`
+	ForSubscribersOnly bool        `json:"for_subscribers_only" gorm:"<-:create"` // allow read and create (not update)
+	IsArchived         bool        `json:"is_archived"`
+	Media              []PostMedia `json:"media" gorm:"constraint:OnDelete:CASCADE;"`
+	Likes              []Profile   `json:"likes" gorm:"many2many:post_likes;constraint:OnDelete:CASCADE;"`
+	Dislikes           []Profile   `json:"dislikes" gorm:"many2many:post_dislikes;constraint:OnDelete:CASCADE;"`
+	Bookmarks          []Profile   `json:"bookmarks" gorm:"many2many:post_bookmarks;constraint:OnDelete:CASCADE;"`
+	Comments           []Comment   `json:"comments" gorm:"constraint:OnDelete:CASCADE;"`
 }
 
 type PostMedia struct {
@@ -48,17 +48,6 @@ func (pm *PostMedia) BeforeCreate(tx *gorm.DB) error {
 		return nil
 	}
 	return errors.New("only one of the following fields can be true: is_image, is_video, is_audio. one field also must be true")
-}
-
-type PostComment struct {
-	Base
-	PostId             string       `json:"post_id" gorm:"size:191"`               // for info on the size parameter: https://github.com/go-gorm/gorm/issues/3369
-	CommenterId        string       `json:"commenter_id" gorm:"size:191"`          // for info on the size parameter: https://github.com/go-gorm/gorm/issues/3369
-	CommentRepliedToId string       `json:"comment_replied_to_id" gorm:"size:191"` // for info on the size parameter: https://github.com/go-gorm/gorm/issues/3369
-	Body               string       `json:"body"`
-	Commenter          Profile      `json:"commenter" gorm:"foreignKey:CommenterId;constraint:OnDelete:CASCADE;"`
-	CommentRepliedTo   *PostComment `json:"comment_replied_to" gorm:"foreignKey:CommentRepliedToId;constraint:OnDelete:CASCADE;"`
-	IsEdited           bool         `json:"is_edited"`
 }
 
 // This is a custom junction table for the many-to-many relationship between a Post and a Liker(profile)
