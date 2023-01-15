@@ -6,7 +6,6 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/rivo/uniseg"
-	"gorm.io/gorm/clause"
 	"nerajima.com/NeraJima/configs"
 	"nerajima.com/NeraJima/models"
 	"nerajima.com/NeraJima/responses"
@@ -89,7 +88,9 @@ func CreatePost(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
 	}
 
-	return c.Status(fiber.StatusOK).JSON(responses.NewSuccessResponse(fiber.StatusOK, &fiber.Map{"data": "Post has been created."}))
+	newPost.Media = postMedia
+
+	return c.Status(fiber.StatusOK).JSON(responses.NewSuccessResponse(fiber.StatusOK, &fiber.Map{"data": newPost}))
 }
 
 func GetPost(c *fiber.Ctx) error {
@@ -176,10 +177,8 @@ func EditPost(c *fiber.Ctx) error {
 func DeletePost(c *fiber.Ctx) error {
 	var reqProfile models.Profile = c.Locals("profile").(models.Profile)
 
-	// Refer to the clause.Associations section in the GORM docs for more info: https://gorm.io/docs/associations.html#Delete-with-Select
-	var base = models.Base{Id: c.Params("postId")}
-	var post = models.Post{Base: base, ProfileId: reqProfile.Id}
-	if err := configs.Database.Model(&models.Post{}).Select(clause.Associations).Delete(&post).Error; err != nil {
+	var post models.Post
+	if err := configs.Database.Model(&models.Post{}).Delete(&post, "id = ? AND profile_id = ?", c.Params("postId"), reqProfile.Id).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
 	}
 

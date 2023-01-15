@@ -4,9 +4,9 @@ import "time"
 
 type Comment struct {
 	Base
-	PostId             string    `json:"post_id" gorm:"size:191"`               // for info on the size parameter: https://github.com/go-gorm/gorm/issues/3369
-	CommenterId        string    `json:"commenter_id" gorm:"size:191"`          // for info on the size parameter: https://github.com/go-gorm/gorm/issues/3369
-	CommentRepliedToId string    `json:"comment_replied_to_id" gorm:"size:191"` // for info on the size parameter: https://github.com/go-gorm/gorm/issues/3369
+	PostId             string    `json:"post_id" gorm:"size:191"` // for info on the size parameter: https://github.com/go-gorm/gorm/issues/3369
+	CommenterId        string    `json:"commenter_id" gorm:"size:191"`
+	CommentRepliedToId *string   `json:"comment_replied_to_id" gorm:"size:191"` // pointer type allows it to be null
 	Body               string    `json:"body"`
 	Commenter          Profile   `json:"commenter" gorm:"foreignKey:CommenterId;constraint:OnDelete:CASCADE;"`
 	CommentRepliedTo   *Comment  `json:"comment_replied_to" gorm:"foreignKey:CommentRepliedToId;constraint:OnDelete:CASCADE;"`

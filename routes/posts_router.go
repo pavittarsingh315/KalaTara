@@ -65,8 +65,9 @@ func commentsRouter(group fiber.Router) {
 	router.Get("/:commentId/replies/get", middleware.UserAuthHandler, middleware.PaginationHandler, postcontrollers.GetReplies)
 
 	router.Post("/create/:postId", middleware.UserAuthHandler, postcontrollers.CreateComment)
-	router.Delete("/:commentId/remove", middleware.UserAuthHandler, postcontrollers.DeleteComment)
 	router.Put("/:commentId/edit", middleware.UserAuthHandler, postcontrollers.EditComment)
+	router.Delete("/:commentId/delete", middleware.UserAuthHandler, postcontrollers.DeleteComment)
+	router.Delete("/:commentId/remove", middleware.UserAuthHandler, postcontrollers.RemoveComment)
 
 	router.Post("/:commentId/like", middleware.UserAuthHandler, postcontrollers.LikeComment)
 	router.Post("/:commentId/dislike", middleware.UserAuthHandler, postcontrollers.DislikeComment)
