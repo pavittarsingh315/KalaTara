@@ -19,10 +19,10 @@ func GetFollowingsFeed(c *fiber.Ctx) error {
 	query := fmt.Sprintf(
 		"SELECT p.id AS post_id, p.title AS post_title, p.caption AS post_caption, p.created_at AS created_at, "+
 			"u.id AS profile_id, u.username AS profile_username, u.name AS profile_name, u.mini_avatar AS profile_mini_avatar, "+
-			"(SELECT GROUP_CONCAT(m.media_url, '') FROM post_media m WHERE m.post_id = p.id ORDER BY m.position) AS media_urls, "+
-			"(SELECT GROUP_CONCAT(m.is_image, '') FROM post_media m WHERE m.post_id = p.id ORDER BY m.position) AS is_images, "+
-			"(SELECT GROUP_CONCAT(m.is_video, '') FROM post_media m WHERE m.post_id = p.id ORDER BY m.position) AS is_videos, "+
-			"(SELECT GROUP_CONCAT(m.is_audio, '') FROM post_media m WHERE m.post_id = p.id ORDER BY m.position) AS is_audios, "+
+			"(SELECT GROUP_CONCAT(CONCAT(m.media_url, '') ORDER BY m.position) FROM post_media m WHERE m.post_id = p.id) AS media_urls, "+
+			"(SELECT GROUP_CONCAT(CONCAT(m.is_image, '') ORDER BY m.position) FROM post_media m WHERE m.post_id = p.id) AS is_images, "+
+			"(SELECT GROUP_CONCAT(CONCAT(m.is_video, '') ORDER BY m.position) FROM post_media m WHERE m.post_id = p.id) AS is_videos, "+
+			"(SELECT GROUP_CONCAT(CONCAT(m.is_audio, '') ORDER BY m.position) FROM post_media m WHERE m.post_id = p.id) AS is_audios, "+
 			"l.num_likes, d.num_dislikes, b.num_bookmarks, "+
 			"(CASE WHEN (SELECT profile_id FROM post_likes WHERE post_id = p.id AND profile_id = \"%s\") IS NOT NULL THEN 1 ELSE 0 END) AS is_liked, "+
 			"(CASE WHEN (SELECT profile_id FROM post_dislikes WHERE post_id = p.id AND profile_id = \"%s\") IS NOT NULL THEN 1 ELSE 0 END) AS is_disliked, "+
@@ -76,10 +76,10 @@ func GetSubscriptionsFeed(c *fiber.Ctx) error {
 	query := fmt.Sprintf(
 		"SELECT p.id AS post_id, p.title AS post_title, p.caption AS post_caption, p.created_at AS created_at, "+
 			"u.id AS profile_id, u.username AS profile_username, u.name AS profile_name, u.mini_avatar AS profile_mini_avatar, "+
-			"(SELECT GROUP_CONCAT(m.media_url, '') FROM post_media m WHERE m.post_id = p.id ORDER BY m.position) AS media_urls, "+
-			"(SELECT GROUP_CONCAT(m.is_image, '') FROM post_media m WHERE m.post_id = p.id ORDER BY m.position) AS is_images, "+
-			"(SELECT GROUP_CONCAT(m.is_video, '') FROM post_media m WHERE m.post_id = p.id ORDER BY m.position) AS is_videos, "+
-			"(SELECT GROUP_CONCAT(m.is_audio, '') FROM post_media m WHERE m.post_id = p.id ORDER BY m.position) AS is_audios, "+
+			"(SELECT GROUP_CONCAT(CONCAT(m.media_url, '') ORDER BY m.position) FROM post_media m WHERE m.post_id = p.id) AS media_urls, "+
+			"(SELECT GROUP_CONCAT(CONCAT(m.is_image, '') ORDER BY m.position) FROM post_media m WHERE m.post_id = p.id) AS is_images, "+
+			"(SELECT GROUP_CONCAT(CONCAT(m.is_video, '') ORDER BY m.position) FROM post_media m WHERE m.post_id = p.id) AS is_videos, "+
+			"(SELECT GROUP_CONCAT(CONCAT(m.is_audio, '') ORDER BY m.position) FROM post_media m WHERE m.post_id = p.id) AS is_audios, "+
 			"l.num_likes, d.num_dislikes, b.num_bookmarks, "+
 			"(CASE WHEN (SELECT profile_id FROM post_likes WHERE post_id = p.id AND profile_id = \"%s\") IS NOT NULL THEN 1 ELSE 0 END) AS is_liked, "+
 			"(CASE WHEN (SELECT profile_id FROM post_dislikes WHERE post_id = p.id AND profile_id = \"%s\") IS NOT NULL THEN 1 ELSE 0 END) AS is_disliked, "+
@@ -133,10 +133,10 @@ func GetArchivedPosts(c *fiber.Ctx) error {
 	query := fmt.Sprintf(
 		"SELECT p.id AS post_id, p.title AS post_title, p.caption AS post_caption, p.created_at AS created_at, "+
 			"u.id AS profile_id, u.username AS profile_username, u.name AS profile_name, u.mini_avatar AS profile_mini_avatar, "+
-			"(SELECT GROUP_CONCAT(m.media_url, '') FROM post_media m WHERE m.post_id = p.id ORDER BY m.position) AS media_urls, "+
-			"(SELECT GROUP_CONCAT(m.is_image, '') FROM post_media m WHERE m.post_id = p.id ORDER BY m.position) AS is_images, "+
-			"(SELECT GROUP_CONCAT(m.is_video, '') FROM post_media m WHERE m.post_id = p.id ORDER BY m.position) AS is_videos, "+
-			"(SELECT GROUP_CONCAT(m.is_audio, '') FROM post_media m WHERE m.post_id = p.id ORDER BY m.position) AS is_audios, "+
+			"(SELECT GROUP_CONCAT(CONCAT(m.media_url, '') ORDER BY m.position) FROM post_media m WHERE m.post_id = p.id) AS media_urls, "+
+			"(SELECT GROUP_CONCAT(CONCAT(m.is_image, '') ORDER BY m.position) FROM post_media m WHERE m.post_id = p.id) AS is_images, "+
+			"(SELECT GROUP_CONCAT(CONCAT(m.is_video, '') ORDER BY m.position) FROM post_media m WHERE m.post_id = p.id) AS is_videos, "+
+			"(SELECT GROUP_CONCAT(CONCAT(m.is_audio, '') ORDER BY m.position) FROM post_media m WHERE m.post_id = p.id) AS is_audios, "+
 			"l.num_likes, d.num_dislikes, b.num_bookmarks, "+
 			"(CASE WHEN (SELECT profile_id FROM post_likes WHERE post_id = p.id AND profile_id = \"%s\") IS NOT NULL THEN 1 ELSE 0 END) AS is_liked, "+
 			"(CASE WHEN (SELECT profile_id FROM post_dislikes WHERE post_id = p.id AND profile_id = \"%s\") IS NOT NULL THEN 1 ELSE 0 END) AS is_disliked, "+
@@ -179,10 +179,10 @@ func GetPublicPosts(c *fiber.Ctx) error {
 	query := fmt.Sprintf(
 		"SELECT p.id AS post_id, p.title AS post_title, p.caption AS post_caption, p.created_at AS created_at, "+
 			"u.id AS profile_id, u.username AS profile_username, u.name AS profile_name, u.mini_avatar AS profile_mini_avatar, "+
-			"(SELECT GROUP_CONCAT(m.media_url, '') FROM post_media m WHERE m.post_id = p.id ORDER BY m.position) AS media_urls, "+
-			"(SELECT GROUP_CONCAT(m.is_image, '') FROM post_media m WHERE m.post_id = p.id ORDER BY m.position) AS is_images, "+
-			"(SELECT GROUP_CONCAT(m.is_video, '') FROM post_media m WHERE m.post_id = p.id ORDER BY m.position) AS is_videos, "+
-			"(SELECT GROUP_CONCAT(m.is_audio, '') FROM post_media m WHERE m.post_id = p.id ORDER BY m.position) AS is_audios, "+
+			"(SELECT GROUP_CONCAT(CONCAT(m.media_url, '') ORDER BY m.position) FROM post_media m WHERE m.post_id = p.id) AS media_urls, "+
+			"(SELECT GROUP_CONCAT(CONCAT(m.is_image, '') ORDER BY m.position) FROM post_media m WHERE m.post_id = p.id) AS is_images, "+
+			"(SELECT GROUP_CONCAT(CONCAT(m.is_video, '') ORDER BY m.position) FROM post_media m WHERE m.post_id = p.id) AS is_videos, "+
+			"(SELECT GROUP_CONCAT(CONCAT(m.is_audio, '') ORDER BY m.position) FROM post_media m WHERE m.post_id = p.id) AS is_audios, "+
 			"l.num_likes, d.num_dislikes, b.num_bookmarks, "+
 			"(CASE WHEN (SELECT profile_id FROM post_likes WHERE post_id = p.id AND profile_id = \"%s\") IS NOT NULL THEN 1 ELSE 0 END) AS is_liked, "+
 			"(CASE WHEN (SELECT profile_id FROM post_dislikes WHERE post_id = p.id AND profile_id = \"%s\") IS NOT NULL THEN 1 ELSE 0 END) AS is_disliked, "+
@@ -228,10 +228,10 @@ func GetExclusivePosts(c *fiber.Ctx) error {
 	query := fmt.Sprintf(
 		"SELECT p.id AS post_id, p.title AS post_title, p.caption AS post_caption, p.created_at AS created_at, "+
 			"u.id AS profile_id, u.username AS profile_username, u.name AS profile_name, u.mini_avatar AS profile_mini_avatar, "+
-			"(SELECT GROUP_CONCAT(m.media_url, '') FROM post_media m WHERE m.post_id = p.id ORDER BY m.position) AS media_urls, "+
-			"(SELECT GROUP_CONCAT(m.is_image, '') FROM post_media m WHERE m.post_id = p.id ORDER BY m.position) AS is_images, "+
-			"(SELECT GROUP_CONCAT(m.is_video, '') FROM post_media m WHERE m.post_id = p.id ORDER BY m.position) AS is_videos, "+
-			"(SELECT GROUP_CONCAT(m.is_audio, '') FROM post_media m WHERE m.post_id = p.id ORDER BY m.position) AS is_audios, "+
+			"(SELECT GROUP_CONCAT(CONCAT(m.media_url, '') ORDER BY m.position) FROM post_media m WHERE m.post_id = p.id) AS media_urls, "+
+			"(SELECT GROUP_CONCAT(CONCAT(m.is_image, '') ORDER BY m.position) FROM post_media m WHERE m.post_id = p.id) AS is_images, "+
+			"(SELECT GROUP_CONCAT(CONCAT(m.is_video, '') ORDER BY m.position) FROM post_media m WHERE m.post_id = p.id) AS is_videos, "+
+			"(SELECT GROUP_CONCAT(CONCAT(m.is_audio, '') ORDER BY m.position) FROM post_media m WHERE m.post_id = p.id) AS is_audios, "+
 			"l.num_likes, d.num_dislikes, b.num_bookmarks, "+
 			"(CASE WHEN (SELECT profile_id FROM post_likes WHERE post_id = p.id AND profile_id = \"%s\") IS NOT NULL THEN 1 ELSE 0 END) AS is_liked, "+
 			"(CASE WHEN (SELECT profile_id FROM post_dislikes WHERE post_id = p.id AND profile_id = \"%s\") IS NOT NULL THEN 1 ELSE 0 END) AS is_disliked, "+

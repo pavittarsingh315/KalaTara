@@ -32,7 +32,7 @@ func CreatePost(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": "Bad request..."}))
 	}
 
-	if reqBody.Title == "" || reqBody.Caption == "" || len(reqBody.Media) == 0 || reqBody.IsArchived == nil || reqBody.ForSubscribersOnly == nil {
+	if reqBody.Title == "" || reqBody.Caption == "" || reqBody.IsArchived == nil || reqBody.ForSubscribersOnly == nil {
 		return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": "Please include all fields."}))
 	}
 	if len(reqBody.Media) > 5 {
@@ -74,23 +74,48 @@ func CreatePost(c *fiber.Ctx) error {
 	}
 
 	var postMedia = []models.PostMedia{}
-	for index, mediaObj := range reqBody.Media {
-		postMedia = append(postMedia, models.PostMedia{
-			PostId:   newPost.Id,
-			Position: index,
-			MediaUrl: mediaObj.MediaUrl,
-			IsImage:  *mediaObj.IsImage,
-			IsVideo:  *mediaObj.IsVideo,
-			IsAudio:  *mediaObj.IsAudio,
-		})
-	}
-	if err := configs.Database.Model(&models.PostMedia{}).Create(&postMedia).Error; err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
+	if len(reqBody.Media) > 0 {
+		for index, mediaObj := range reqBody.Media {
+			postMedia = append(postMedia, models.PostMedia{
+				PostId:   newPost.Id,
+				Position: index,
+				MediaUrl: mediaObj.MediaUrl,
+				IsImage:  *mediaObj.IsImage,
+				IsVideo:  *mediaObj.IsVideo,
+				IsAudio:  *mediaObj.IsAudio,
+			})
+		}
+		if err := configs.Database.Model(&models.PostMedia{}).Create(&postMedia).Error; err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
+		}
 	}
 
-	newPost.Media = postMedia
+	resObj := struct {
+		postsWithoutMedia
+		Media []models.PostMedia `json:"media"`
+	}{
+		postsWithoutMedia: postsWithoutMedia{
+			PostId:       newPost.Id,
+			Title:        newPost.Title,
+			Caption:      newPost.Caption,
+			CreatedAt:    newPost.CreatedAt,
+			ProfileId:    reqProfile.Id,
+			Username:     reqProfile.Username,
+			Name:         reqProfile.Name,
+			MiniAvatar:   reqProfile.MiniAvatar,
+			NumLikes:     0,
+			NumDislikes:  0,
+			NumBookmarks: 0,
+			IsLiked:      false,
+			IsDisliked:   false,
+			IsBookmarked: false,
+		},
+		Media: postMedia,
+	}
 
-	return c.Status(fiber.StatusOK).JSON(responses.NewSuccessResponse(fiber.StatusOK, &fiber.Map{"data": newPost}))
+	return c.Status(fiber.StatusOK).JSON(responses.NewSuccessResponse(fiber.StatusOK, &fiber.Map{
+		"data": resObj,
+	}))
 }
 
 func GetPost(c *fiber.Ctx) error {
