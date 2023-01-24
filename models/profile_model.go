@@ -18,7 +18,6 @@ import (
    The "Posts" field is for the "has many" relation between the Profile and Post models
 */
 
-// TODO: index the name field so that when performing a search on profiles using a name, the searches are fast/efficient.
 type Profile struct {
 	Base
 	UserId        string          `json:"user_id" gorm:"size:191"`
@@ -42,7 +41,6 @@ type ProfileFollower struct {
 }
 
 // This is a custom junction table for the self-referencing many-to-many relationship between a Profile and a Subscriber
-// TODO: index the IsAccepted, IsRequest, IsInvite fields
 type ProfileSubscriber struct {
 	ProfileId    string    `json:"profile_id" gorm:"primary_key;type:uuid;<-:create"`    // allow read and create (not update)
 	SubscriberId string    `json:"subscriber_id" gorm:"primary_key;type:uuid;<-:create"` // allow read and create (not update)
@@ -66,5 +64,3 @@ type MiniProfile struct {
 	Name       string `json:"name"`
 	MiniAvatar string `json:"mini_avatar"`
 }
-
-// TODO: Use this https://gorm.io/docs/associations.html#Find-Associations and https://gorm.io/docs/associations.html#Count-Associations to get #followers/#following/#whitelist
