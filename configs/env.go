@@ -39,3 +39,23 @@ func EnvMySqlDNS() (dns string) {
 	dns = os.Getenv("MYSQL_DNS")
 	return
 }
+
+func EnvRedisAddr() (addr string) {
+	addr = os.Getenv("REDIS_ADDRESS")
+	return
+}
+
+func EnvRedisUsername() (username string) {
+	username = os.Getenv("REDIS_USERNAME")
+	return
+}
+
+func EnvRedisPassword() (password string) {
+	password = os.Getenv("REDIS_PASSWORD")
+	return
+}
+
+func EnvRedisDatabase() (database string) {
+	database = os.Getenv("REDIS_DATABASE")
+	return
+}

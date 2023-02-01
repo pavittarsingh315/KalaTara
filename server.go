@@ -29,6 +29,7 @@ func main() {
 	}
 
 	configs.InitDatabase()
+	configs.InitRedis()
 	routes.InitRouter(app)
 
 	// Launch Application
