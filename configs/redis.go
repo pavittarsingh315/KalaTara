@@ -3,7 +3,6 @@ package configs
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"log"
 	"strconv"
 	"time"
@@ -52,11 +51,12 @@ func RedisSet(ctx context.Context, key string, value interface{}, expiration tim
 func RedisGet(ctx context.Context, key string, dest interface{}) error {
 	value, err := rdb.Get(ctx, key).Result()
 	if err != nil {
-		if err == redis.Nil {
-			return errors.New("key does not exist")
-		} else {
-			return err
-		}
+		return err
 	}
 	return json.Unmarshal([]byte(value), dest)
+}
+
+// Returns the formatted key for profile objects given the user id.
+func RedisProfileKey(user_id string) string {
+	return "user:" + user_id + ":profile"
 }

@@ -3,10 +3,10 @@ TODOS:
 
 GOOD IDEAS:
    1. Caching User and Profile as one object in Redis:
-      a. In both login routes, when the user and profile is fetched from the database, cache them as one object in Redis.
-      b. In the auth middleware, first try to get the user/profile obj from Redis. If they don't exist, query the DB and put them in cache.
-      c. Don't set an expiration time when caching the user/profile obj. Websocket connection will remove them from cache when they disconnect.
-      d. When a user updates their user model or profile model via the API, in that route, update the user/profile object in Redis.
+      a. In both login routes, when the user and profile is fetched from the database, cache the profile object in Redis.
+      b. In the auth middleware, first try to get the profile obj from Redis. If it doesn't exist, query the DB and put it in cache.
+      c. Websocket connection will remove profile obj from cache when user disconnects. However you should add a expiration time anyways.
+      d. When a user updates their profile model via the API, in that route, update the profile object in Redis.
       e. When a user is deleted, delete them from Redis.
 
    2. Websockets:
@@ -17,5 +17,5 @@ GOOD IDEAS:
    3. Notifications:
       a. Use mysql binary logs to stream events from mysql. So for example when an object is created, a log is created. We can stream such events and get real-time data updates.
       b. When creating notification objects, check whether the user who will get the notification is in Redis. If they are that means they're online.
-      c. If the user who will get the notification is offline, have Firbase Cloud Messaging send a notification.
+      c. If the user who will get the notification is offline, have Firebase Cloud Messaging send a notification.
       d. If the user who will get the notification is online, then capture the notification obj from the binary log and send it to the user across the Websocket connection.

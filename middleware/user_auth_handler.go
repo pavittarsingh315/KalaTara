@@ -1,7 +1,11 @@
 package middleware
 
 import (
+	"context"
+	"time"
+
 	"github.com/gofiber/fiber/v2"
+	"github.com/redis/go-redis/v9"
 	"nerajima.com/NeraJima/configs"
 	"nerajima.com/NeraJima/models"
 	"nerajima.com/NeraJima/responses"
@@ -14,6 +18,7 @@ func UserAuthHandler(c *fiber.Ctx) error {
 		UserId string `reqHeader:"userId"`
 	}{}
 	errMessage := "Could not authorize action."
+	ctx := context.Background()
 
 	if err := c.ReqHeaderParser(&reqHeader); err != nil || reqHeader.Token == "" || reqHeader.UserId == "" {
 		return c.Status(fiber.StatusUnauthorized).JSON(responses.NewErrorResponse(fiber.StatusUnauthorized, &fiber.Map{"data": errMessage}))
@@ -24,15 +29,27 @@ func UserAuthHandler(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusUnauthorized).JSON(responses.NewErrorResponse(fiber.StatusUnauthorized, &fiber.Map{"data": errMessage}))
 	}
 
-	var user models.User
-	if err := configs.Database.Model(&models.User{}).Preload("Profile").Find(&user, "id = ?", accessBody.UserId).Error; err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
-	}
-	if user.Id == "" || user.Profile.Username == "" { // (contact field is empty => user doesn't exist || username field is empty => profile doesn't exist) => Account is not found
-		return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": "Account not found."}))
+	var profile models.Profile
+	var key = configs.RedisProfileKey(accessBody.UserId)
+	if err := configs.RedisGet(ctx, key, &profile); err != nil {
+		if err == redis.Nil { // key does not exist
+			if err := configs.Database.Model(&models.Profile{}).Find(&profile, "user_id = ?", accessBody.UserId).Error; err != nil {
+				return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
+			}
+			if profile.Id == "" { // Id field is empty => Account is not found
+				return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": "Account not found."}))
+			}
+
+			// Cache profile
+			if err := configs.RedisSet(ctx, key, profile, time.Hour*3); err != nil {
+				return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
+			}
+		} else {
+			return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
+		}
 	}
 
-	c.Locals("profile", user.Profile)
+	c.Locals("profile", profile)
 
 	return c.Next()
 }
