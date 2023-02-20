@@ -1,6 +1,7 @@
 package authcontrollers
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"time"
@@ -57,6 +58,14 @@ func Login(c *fiber.Ctx) error {
 
 	// Generate auth tokens
 	access, refresh := utils.GenAuthTokens(user.Id)
+
+	// Cache profile
+	ctx := context.Background()
+	var key = configs.RedisProfileKey(user.Id)
+	var exp = configs.RedisProfileExpiration()
+	if err := configs.RedisSet(ctx, key, user.Profile, exp); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
+	}
 
 	return c.Status(fiber.StatusOK).JSON(
 		responses.NewSuccessResponse(
@@ -120,6 +129,14 @@ func TokenLogin(c *fiber.Ctx) error {
 
 	// Update last login - because we preloaded the profile in the earlier query, we need to create a query on a "clean" user model so that a profile's username unique constraint isn't violated.
 	if err := configs.Database.Model(&models.User{}).Where("id = ?", user.Id).Update("last_login", time.Now()).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
+	}
+
+	// Cache profile
+	ctx := context.Background()
+	var key = configs.RedisProfileKey(user.Id)
+	var exp = configs.RedisProfileExpiration()
+	if err := configs.RedisSet(ctx, key, user.Profile, exp); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
 	}
 

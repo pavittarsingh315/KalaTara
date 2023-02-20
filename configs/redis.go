@@ -60,3 +60,7 @@ func RedisGet(ctx context.Context, key string, dest interface{}) error {
 func RedisProfileKey(user_id string) string {
 	return "user:" + user_id + ":profile"
 }
+
+func RedisProfileExpiration() time.Duration {
+	return time.Hour * 3
+}

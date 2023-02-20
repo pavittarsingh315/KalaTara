@@ -2,7 +2,6 @@ package middleware
 
 import (
 	"context"
-	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/redis/go-redis/v9"
@@ -31,6 +30,7 @@ func UserAuthHandler(c *fiber.Ctx) error {
 
 	var profile models.Profile
 	var key = configs.RedisProfileKey(accessBody.UserId)
+	var exp = configs.RedisProfileExpiration()
 	if err := configs.RedisGet(ctx, key, &profile); err != nil {
 		if err == redis.Nil { // key does not exist
 			if err := configs.Database.Model(&models.Profile{}).Find(&profile, "user_id = ?", accessBody.UserId).Error; err != nil {
@@ -41,7 +41,7 @@ func UserAuthHandler(c *fiber.Ctx) error {
 			}
 
 			// Cache profile
-			if err := configs.RedisSet(ctx, key, profile, time.Hour*3); err != nil {
+			if err := configs.RedisSet(ctx, key, profile, exp); err != nil {
 				return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
 			}
 		} else {

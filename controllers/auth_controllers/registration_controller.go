@@ -1,6 +1,7 @@
 package authcontrollers
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"time"
@@ -219,6 +220,14 @@ func FinalizeRegistration(c *fiber.Ctx) error {
 
 	// Generate auth tokens
 	access, refresh := utils.GenAuthTokens(newUser.Id)
+
+	// Cache profile
+	ctx := context.Background()
+	var key = configs.RedisProfileKey(newUser.Id)
+	var exp = configs.RedisProfileExpiration()
+	if err := configs.RedisSet(ctx, key, newProfile, exp); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
+	}
 
 	return c.Status(fiber.StatusOK).JSON(
 		responses.NewSuccessResponse(
