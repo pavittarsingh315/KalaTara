@@ -9,6 +9,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/rivo/uniseg"
 	"nerajima.com/NeraJima/configs"
+	"nerajima.com/NeraJima/configs/cache"
 	"nerajima.com/NeraJima/models"
 	"nerajima.com/NeraJima/responses"
 	"nerajima.com/NeraJima/utils"
@@ -223,9 +224,9 @@ func FinalizeRegistration(c *fiber.Ctx) error {
 
 	// Cache profile
 	ctx := context.Background()
-	var key = configs.RedisProfileKey(newUser.Id)
-	var exp = configs.RedisProfileExpiration()
-	if err := configs.RedisSet(ctx, key, newProfile, exp); err != nil {
+	var key = cache.ProfileKey(newUser.Id)
+	var exp = cache.ProfileExp
+	if err := cache.Set(ctx, key, newProfile, exp); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
 	}
 

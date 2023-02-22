@@ -11,6 +11,7 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/recover"
 	"github.com/gofiber/helmet/v2"
 	"nerajima.com/NeraJima/configs"
+	"nerajima.com/NeraJima/configs/cache"
 	"nerajima.com/NeraJima/routes"
 )
 
@@ -29,7 +30,7 @@ func main() {
 	}
 
 	configs.InitDatabase()
-	configs.InitRedis()
+	cache.Initialize()
 	routes.InitRouter(app)
 
 	// Launch Application
