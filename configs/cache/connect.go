@@ -52,3 +52,21 @@ func Set(ctx context.Context, key string, value interface{}, expiration time.Dur
 	}
 	return nil
 }
+
+// Delete key(s) from cache. Returns true if all key(s) deleted successfully, else false
+func Delete(ctx context.Context, keys ...string) bool {
+	num_keys_removed, err := rdb.Del(ctx, keys...).Result()
+	if err != nil {
+		return false
+	}
+	return num_keys_removed == int64(len(keys))
+}
+
+// Returns the remaining duration of the key's lifespan
+func ExpiresIn(ctx context.Context, key string) (time.Duration, error) {
+	duration, err := rdb.TTL(ctx, key).Result()
+	if err != nil {
+		return time.Second * 0, err
+	}
+	return duration, nil
+}

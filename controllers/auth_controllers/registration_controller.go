@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/redis/go-redis/v9"
 	"github.com/rivo/uniseg"
 	"nerajima.com/NeraJima/configs"
 	"nerajima.com/NeraJima/configs/cache"
@@ -82,30 +83,21 @@ func InitiateRegistration(c *fiber.Ctx) error {
 	}
 
 	// Check if registration is already initiated
-	var tempObj models.TemporaryObject
-	if err := configs.Database.Model(&models.TemporaryObject{}).Find(&tempObj, "contact = ?", reqBody.Contact).Error; err != nil {
+	ctx := context.Background()
+	var key = cache.NewUserConfirmCodeKey(reqBody.Contact)
+	var confirmationCode string
+	if err := cache.Get(ctx, key, &confirmationCode); err == nil { // no error => key exists ie hasnt expired
+		dur, _ := cache.ExpiresIn(ctx, key)
+		message := fmt.Sprintf("Try again in %s.", utils.SecondsToString(int64(dur.Seconds())))
+		return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": message}))
+	} else if err != redis.Nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
 	}
-	if tempObj.Contact != "" { // contact field is not empty => temporary object with contact exists
-		if tempObj.IsExpired() {
-			if err := configs.Database.Model(&models.TemporaryObject{}).Delete(&tempObj).Error; err != nil {
-				return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
-			}
-		} else {
-			unixTimeNow := time.Now().Unix()
-			unixTimeFiveMinAfterObjCreated := tempObj.CreatedAt.Add(time.Minute * 5).Unix()
-			message := fmt.Sprintf("Looks like this contact is part of another registration process. Try again in %s.", utils.SecondsToString(unixTimeFiveMinAfterObjCreated-unixTimeNow))
-			return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": message}))
-		}
-	}
 
-	// Create tempObj
-	code := utils.GenerateRandomCode(6)
-	newTempObj := models.TemporaryObject{
-		VerificationCode: utils.HashPassword(code),
-		Contact:          reqBody.Contact,
-	}
-	if err := configs.Database.Model(&models.TemporaryObject{}).Create(&newTempObj).Error; err != nil {
+	// Create new user confirm code in cache
+	var code = utils.GenerateRandomCode(6)
+	var exp = cache.NewUserConfirmCodeExp
+	if err := cache.Set(ctx, key, utils.HashPassword(code), exp); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
 	}
 
@@ -171,17 +163,20 @@ func FinalizeRegistration(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": "Username is taken."}))
 	}
 
-	// Get temporary object
-	var tempObj models.TemporaryObject
-	if err := configs.Database.Model(&models.TemporaryObject{}).Find(&tempObj, "contact = ?", reqBody.Contact).Error; err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
-	}
-	if tempObj.Contact == "" { // contact field is empty => tempObj does not exist anymore
-		return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": "Code has expired. Please restart the registration process."}))
+	// Get confirmation code
+	ctx := context.Background()
+	var key = cache.NewUserConfirmCodeKey(reqBody.Contact)
+	var confirmationCode string
+	if err := cache.Get(ctx, key, &confirmationCode); err != nil {
+		if err == redis.Nil {
+			return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": "Code has expired. Please restart the registration process."}))
+		} else {
+			return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
+		}
 	}
 
 	// Check if user provided code is correct
-	if !utils.VerifyPassword(tempObj.VerificationCode, reqBody.Code) {
+	if !utils.VerifyPassword(confirmationCode, reqBody.Code) {
 		return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": "Incorrect Code."}))
 	}
 
@@ -214,17 +209,14 @@ func FinalizeRegistration(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
 	}
 
-	// Delete temporary object
-	if err := configs.Database.Model(&models.TemporaryObject{}).Delete(&tempObj).Error; err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
-	}
+	// Delete confirmation code from cache
+	cache.Delete(ctx, key)
 
 	// Generate auth tokens
 	access, refresh := utils.GenAuthTokens(newUser.Id)
 
 	// Cache profile
-	ctx := context.Background()
-	var key = cache.ProfileKey(newUser.Id)
+	key = cache.ProfileKey(newUser.Id)
 	var exp = cache.ProfileExp
 	if err := cache.Set(ctx, key, newProfile, exp); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
