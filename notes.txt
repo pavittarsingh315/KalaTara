@@ -1,5 +1,4 @@
 TODOS:
-   1. Remove the TemporaryObject table from the database and instead use Redis. You can give this an expires flag in Redis which will auto delete the object when its expired. Also its a lot quicker cause ya know it'd be in memory.
 
 GOOD IDEAS:
    1. Caching User and Profile as one object in Redis:

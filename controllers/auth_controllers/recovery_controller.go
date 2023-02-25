@@ -1,11 +1,15 @@
 package authcontrollers
 
 import (
+	"context"
+	"fmt"
 	"strings"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/redis/go-redis/v9"
 	"github.com/rivo/uniseg"
 	"nerajima.com/NeraJima/configs"
+	"nerajima.com/NeraJima/configs/cache"
 	"nerajima.com/NeraJima/models"
 	"nerajima.com/NeraJima/responses"
 	"nerajima.com/NeraJima/utils"
@@ -37,27 +41,21 @@ func RequestPasswordReset(c *fiber.Ctx) error {
 	}
 
 	// Check if reset is already initiated
-	var tempObj models.TemporaryObject
-	if err := configs.Database.Model(&models.TemporaryObject{}).Find(&tempObj, "contact = ?", reqBody.Contact).Error; err != nil {
+	ctx := context.Background()
+	var key = cache.PasswordResetCodeKey(reqBody.Contact)
+	var resetCode string
+	if err := cache.Get(ctx, key, &resetCode); err == nil { // no error => key exists ie hasnt expired
+		dur, _ := cache.ExpiresIn(ctx, key)
+		message := fmt.Sprintf("Try again in %s.", utils.SecondsToString(int64(dur.Seconds())))
+		return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": message}))
+	} else if err != redis.Nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
 	}
-	if tempObj.Contact != "" { // contact field is not empty => temporary object with contact exists
-		if tempObj.IsExpired() {
-			if err := configs.Database.Model(&models.TemporaryObject{}).Delete(&tempObj).Error; err != nil {
-				return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
-			}
-		} else {
-			return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": "Please try again in a few minutes."}))
-		}
-	}
 
-	// Create tempObj
-	code := utils.GenerateRandomCode(6)
-	newTempObj := models.TemporaryObject{
-		VerificationCode: utils.HashPassword(code),
-		Contact:          reqBody.Contact,
-	}
-	if err := configs.Database.Model(&models.TemporaryObject{}).Create(&newTempObj).Error; err != nil {
+	// Create password reset code in cache
+	var code = utils.GenerateRandomCode(6)
+	var exp = cache.PasswordResetCodeEXP
+	if err := cache.Set(ctx, key, utils.HashPassword(code), exp); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
 	}
 
@@ -90,24 +88,19 @@ func ConfirmResetCode(c *fiber.Ctx) error {
 	reqBody.Contact = strings.ToLower(strings.ReplaceAll(reqBody.Contact, " ", "")) // remove all whitespace and make lowercase
 
 	// Check if reset code exists
-	var tempObj models.TemporaryObject
-	if err := configs.Database.Model(&models.TemporaryObject{}).Find(&tempObj, "contact = ?", reqBody.Contact).Error; err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
-	}
-	if tempObj.Contact == "" { // contact field is empty => temporary object with contact doesn't exist
-		return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": "Code has expired. Please restart the reset process."}))
-	} else {
-		// If tempObj is expired, delete it
-		if tempObj.IsExpired() {
-			if err := configs.Database.Model(&models.TemporaryObject{}).Delete(&tempObj).Error; err != nil {
-				return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
-			}
-			return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": "Code has expired. Please restart the reset process."}))
+	ctx := context.Background()
+	var key = cache.PasswordResetCodeKey(reqBody.Contact)
+	var resetCode string
+	if err := cache.Get(ctx, key, &resetCode); err != nil {
+		if err == redis.Nil {
+			return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": "Code has expired. Please restart the recovery process."}))
+		} else {
+			return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
 		}
 	}
 
 	// Check if user provided code is correct
-	if !utils.VerifyPassword(tempObj.VerificationCode, reqBody.Code) {
+	if !utils.VerifyPassword(resetCode, reqBody.Code) {
 		return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": "Incorrect Code."}))
 	}
 
@@ -138,39 +131,32 @@ func ConfirmPasswordReset(c *fiber.Ctx) error {
 	reqBody.Contact = strings.ToLower(strings.ReplaceAll(reqBody.Contact, " ", "")) // remove all whitespace and make lowercase
 
 	// Check if reset code exists
-	var tempObj models.TemporaryObject
-	if err := configs.Database.Model(&models.TemporaryObject{}).Find(&tempObj, "contact = ?", reqBody.Contact).Error; err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
-	}
-	if tempObj.Contact == "" { // contact field is empty => temporary object with contact doesn't exist
-		return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": "Code has expired. Please restart the reset process."}))
-	} else {
-		// If tempObj is expired, delete it
-		if tempObj.IsExpired() {
-			if err := configs.Database.Model(&models.TemporaryObject{}).Delete(&tempObj).Error; err != nil {
-				return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
-			}
-			return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": "Code has expired. Please restart the reset process."}))
+	ctx := context.Background()
+	var key = cache.PasswordResetCodeKey(reqBody.Contact)
+	var resetCode string
+	if err := cache.Get(ctx, key, &resetCode); err != nil {
+		if err == redis.Nil {
+			return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": "Code has expired. Please restart the recovery process."}))
+		} else {
+			return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
 		}
 	}
 
 	// Check if user provided code is correct
-	if !utils.VerifyPassword(tempObj.VerificationCode, reqBody.Code) {
+	if !utils.VerifyPassword(resetCode, reqBody.Code) {
 		return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": "Incorrect Code."}))
 	}
 
-	// We know that a tempObj is created after checking if the user with contact = reqBody.Contact exists.
-	// So theres no need to check now if a user exists with contact = reqBody.Contact because the only way the tempObj is created is if thats true.
+	// We know that a reset code is created after checking if the user with contact = reqBody.Contact exists.
+	// So theres no need to check now if a user exists with contact = reqBody.Contact because the only way the reset code is created is if thats true.
 
 	// Update password
 	if err := configs.Database.Model(&models.User{}).Where("contact = ?", reqBody.Contact).Update("password", utils.HashPassword(reqBody.Password)).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
 	}
 
-	// Delete tempObj
-	if err := configs.Database.Model(&models.TemporaryObject{}).Delete(&tempObj).Error; err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
-	}
+	// Delete reset code from cache
+	cache.Delete(ctx, key)
 
 	return c.Status(fiber.StatusOK).JSON(responses.NewSuccessResponse(fiber.StatusOK, &fiber.Map{"data": "Password has successfully been updated."}))
 }

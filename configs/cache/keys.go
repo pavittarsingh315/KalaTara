@@ -15,3 +15,11 @@ func ProfileKey(user_id string) string {
 func NewUserConfirmCodeKey(contact string) string {
 	return "NU:" + contact + ":CC"
 }
+
+// Key format:
+//  1. "P" meaning "password"
+//  2. contact of resetting user
+//  3. "RC" meaning "reset code"
+func PasswordResetCodeKey(contact string) string {
+	return "P:" + contact + ":RC"
+}

@@ -29,7 +29,6 @@ func InitDatabase() {
 	}
 
 	if err = db.AutoMigrate(
-		&models.TemporaryObject{},
 		&models.User{},
 		&models.Profile{},
 		&models.SearchHistory{},
