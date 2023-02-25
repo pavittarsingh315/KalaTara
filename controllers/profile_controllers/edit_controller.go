@@ -1,11 +1,14 @@
 package profilecontrollers
 
 import (
+	"context"
+	"fmt"
 	"strings"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/rivo/uniseg"
 	"nerajima.com/NeraJima/configs"
+	"nerajima.com/NeraJima/configs/cache"
 	"nerajima.com/NeraJima/models"
 	"nerajima.com/NeraJima/responses"
 )
@@ -41,11 +44,19 @@ func EditUsername(c *fiber.Ctx) error {
 
 	// Update username
 	if err := configs.Database.Model(&reqProfile).Update("username", reqBody.Username).Error; err != nil {
-		if err.Error() == "Error 1062: Duplicate entry 'darkstar' for key 'profiles.username'" {
+		if err.Error() == fmt.Sprintf("Error 1062: Duplicate entry '%s' for key 'profiles.username'", reqBody.Username) {
 			return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": "Username is taken."}))
 		} else {
 			return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
 		}
+	}
+
+	// Update cached profile
+	ctx := context.Background()
+	var key = cache.ProfileKey(reqProfile.UserId)
+	var exp = cache.ProfileExp
+	if err := cache.Set(ctx, key, reqProfile, exp); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
 	}
 
 	return c.Status(fiber.StatusOK).JSON(responses.NewSuccessResponse(fiber.StatusOK, &fiber.Map{"data": "Username has been updated."}))
@@ -76,6 +87,14 @@ func EditName(c *fiber.Ctx) error {
 
 	// Update name
 	if err := configs.Database.Model(&reqProfile).Update("name", reqBody.Name).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
+	}
+
+	// Update cached profile
+	ctx := context.Background()
+	var key = cache.ProfileKey(reqProfile.UserId)
+	var exp = cache.ProfileExp
+	if err := cache.Set(ctx, key, reqProfile, exp); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
 	}
 
@@ -110,6 +129,14 @@ func EditBio(c *fiber.Ctx) error {
 
 	// Update bio
 	if err := configs.Database.Model(&reqProfile).Update("bio", reqBody.Bio).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
+	}
+
+	// Update cached profile
+	ctx := context.Background()
+	var key = cache.ProfileKey(reqProfile.UserId)
+	var exp = cache.ProfileExp
+	if err := cache.Set(ctx, key, reqProfile, exp); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
 	}
 
