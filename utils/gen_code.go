@@ -13,7 +13,7 @@ func GenerateRandomCode(maxLength int) string {
 	n, err := io.ReadAtLeast(rand.Reader, b, maxLength)
 
 	if n != maxLength {
-		log.Fatal(err)
+		log.Print(err)
 	}
 
 	for i := 0; i < len(b); i++ {

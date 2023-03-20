@@ -8,9 +8,10 @@ import (
 )
 
 type client struct {
-	Conn    *websocket.Conn
-	Message chan string
-	Profile models.Profile
+	ConnectionId int // This allows us to distinguish the connections associated to a single user because one user can connect from multiple devices meaning one user can have multiple connections. This id helps us differentiate them
+	Conn         *websocket.Conn
+	Message      chan string
+	Profile      models.Profile
 }
 
 func (c *client) writeMessage() {
