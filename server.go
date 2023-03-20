@@ -13,6 +13,7 @@ import (
 	"nerajima.com/NeraJima/configs"
 	"nerajima.com/NeraJima/configs/cache"
 	"nerajima.com/NeraJima/routes"
+	"nerajima.com/NeraJima/ws"
 )
 
 func main() {
@@ -31,7 +32,10 @@ func main() {
 
 	configs.InitDatabase()
 	cache.Initialize()
-	routes.InitRouter(app)
+
+	hub := ws.NewHub()
+	go hub.Run()
+	routes.InitRouter(app, hub)
 
 	// Launch Application
 	if err := app.Listen(":" + os.Getenv("PORT")); err != nil {
