@@ -1,4 +1,5 @@
 TODOS:
+   1. Consider changing the id field on the models to UUID rather than string representation of UUID
 
 GOOD IDEAS:
    1. Caching User and Profile as one object in Redis:
