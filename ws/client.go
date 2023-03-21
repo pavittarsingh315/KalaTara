@@ -4,11 +4,12 @@ import (
 	"log"
 
 	"github.com/gofiber/websocket/v2"
+	"github.com/google/uuid"
 	"nerajima.com/NeraJima/models"
 )
 
 type client struct {
-	ConnectionId int // This allows us to distinguish the connections associated to a single user because one user can connect from multiple devices meaning one user can have multiple connections. This id helps us differentiate them
+	ConnectionId uuid.UUID // This allows us to distinguish the connections associated to a single user because one user can connect from multiple devices meaning one user can have multiple connections. This id helps us differentiate them
 	Conn         *websocket.Conn
 	Message      chan string
 	Profile      models.Profile
