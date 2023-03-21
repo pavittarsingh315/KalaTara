@@ -1,6 +1,9 @@
 package ws
 
-import "github.com/google/uuid"
+import (
+	"github.com/gofiber/fiber/v2"
+	"github.com/google/uuid"
+)
 
 type Hub struct {
 	// Map of all the connected clients via websockets
@@ -11,7 +14,7 @@ type Hub struct {
 	Clients    map[string]map[uuid.UUID]*client
 	register   chan *client
 	unregister chan *client
-	broadcast  chan string
+	broadcast  chan *fiber.Map
 }
 
 func NewHub() *Hub {
@@ -19,7 +22,7 @@ func NewHub() *Hub {
 		Clients:    make(map[string]map[uuid.UUID]*client),
 		register:   make(chan *client),
 		unregister: make(chan *client),
-		broadcast:  make(chan string, 10), // channel is buffered with capacity = 10
+		broadcast:  make(chan *fiber.Map, 10), // channel is buffered with capacity = 10
 	}
 }
 

@@ -1,8 +1,10 @@
 package ws
 
 import (
+	"encoding/json"
 	"log"
 
+	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/websocket/v2"
 	"github.com/google/uuid"
 	"nerajima.com/NeraJima/models"
@@ -11,7 +13,7 @@ import (
 type client struct {
 	ConnectionId uuid.UUID // This allows us to distinguish the connections associated to a single user because one user can connect from multiple devices meaning one user can have multiple connections. This id helps us differentiate them
 	Conn         *websocket.Conn
-	Message      chan string
+	Message      chan *fiber.Map
 	Profile      models.Profile
 }
 
@@ -45,6 +47,12 @@ func (c *client) readMessage(h *Hub) {
 			break
 		}
 
-		h.broadcast <- string(m)
+		var data fiber.Map
+		if err := json.Unmarshal(m, &data); err != nil {
+			log.Printf("error: %v", err)
+			break
+		}
+
+		h.broadcast <- &data
 	}
 }

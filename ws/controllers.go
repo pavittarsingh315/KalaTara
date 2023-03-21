@@ -1,6 +1,7 @@
 package ws
 
 import (
+	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/websocket/v2"
 	"github.com/google/uuid"
 	"nerajima.com/NeraJima/models"
@@ -13,7 +14,7 @@ func (h *Hub) Connect(c *websocket.Conn) {
 	cl := &client{
 		ConnectionId: uuid.New(),
 		Conn:         c,
-		Message:      make(chan string, 10), // channel is buffered with capacity = 10
+		Message:      make(chan *fiber.Map, 10), // channel is buffered with capacity = 10
 		Profile:      reqProfile,
 	}
 
