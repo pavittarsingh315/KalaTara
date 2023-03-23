@@ -1,8 +1,6 @@
 package ws
 
 import (
-	"sync"
-
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/websocket/v2"
 	"github.com/google/uuid"
@@ -22,9 +20,6 @@ func (h *Hub) Connect(c *websocket.Conn) {
 
 	h.register <- cl
 
-	wg := new(sync.WaitGroup)
-	wg.Add(2)
-	go cl.writeMessage(wg)
-	go cl.readMessage(h, wg)
-	wg.Wait()
+	go cl.writeMessage()
+	cl.readMessage(h) // we don't run this in a go routine cause fiber spawns a goroutine for each request therefore this func runs in the goroutine spawned by fiber for each instance of the request
 }

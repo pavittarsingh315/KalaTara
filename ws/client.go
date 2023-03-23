@@ -3,7 +3,6 @@ package ws
 import (
 	"encoding/json"
 	"log"
-	"sync"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/websocket/v2"
@@ -18,10 +17,9 @@ type client struct {
 	Profile      models.Profile
 }
 
-func (c *client) writeMessage(wg *sync.WaitGroup) {
+func (c *client) writeMessage() {
 	defer func() {
 		c.Conn.Close()
-		wg.Done()
 	}()
 
 	for {
@@ -34,11 +32,10 @@ func (c *client) writeMessage(wg *sync.WaitGroup) {
 	}
 }
 
-func (c *client) readMessage(h *Hub, wg *sync.WaitGroup) {
+func (c *client) readMessage(h *Hub) {
 	defer func() {
 		h.unregister <- c
 		c.Conn.Close()
-		wg.Done()
 	}()
 
 	for {
