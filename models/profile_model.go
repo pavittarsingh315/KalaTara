@@ -16,6 +16,8 @@ import (
    The "SearchHistory" field is for the "has many" relation between the Profile and SearchHistory models
 
    The "Posts" field is for the "has many" relation between the Profile and Post models
+
+   The "Notifications" field is for the "has many" relation between the Profile and Notification models
 */
 
 type Profile struct {
@@ -31,6 +33,7 @@ type Profile struct {
 	Subscribers   []*Profile      `json:"subscribers" gorm:"many2many:profile_subscribers;constraint:OnDelete:CASCADE;"`
 	SearchHistory []SearchHistory `json:"search_history" gorm:"constraint:OnDelete:CASCADE;"`
 	Posts         []Post          `json:"posts" gorm:"constraint:OnDelete:CASCADE;"`
+	Notifications []Notification  `json:"notifications" gorm:"constraint:OnDelete:CASCADE;"`
 }
 
 // This is a custom junction table for the self-referencing many-to-many relationship between a Profile and a Follower

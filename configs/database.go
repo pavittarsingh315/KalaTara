@@ -35,6 +35,7 @@ func InitDatabase() {
 		&models.Post{},
 		&models.PostMedia{},
 		&models.Comment{},
+		&models.Notification{},
 	); err != nil {
 		log.Fatal("Error during migration...")
 		panic(err)
