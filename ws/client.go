@@ -3,6 +3,8 @@ package ws
 import (
 	"encoding/json"
 	"log"
+	"sync"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/websocket/v2"
@@ -13,8 +15,15 @@ import (
 type client struct {
 	ConnectionId uuid.UUID // This allows us to distinguish the connections associated to a single user because one user can connect from multiple devices meaning one user can have multiple connections. This id helps us differentiate them
 	Conn         *websocket.Conn
-	Message      chan *fiber.Map
+	Message      chan *Message
 	Profile      models.Profile
+	mu           sync.Mutex
+}
+
+type Message struct {
+	BelongsTo []string  `json:"belongs_to"`
+	Body      string    `json:"body"`
+	Received  time.Time `json:"received"`
 }
 
 func (c *client) writeMessage() {
@@ -47,12 +56,16 @@ func (c *client) readMessage(h *Hub) {
 			break
 		}
 
-		var data fiber.Map
-		if err := json.Unmarshal(m, &data); err != nil {
-			log.Printf("error: %v", err)
-			break
+		var msg Message
+		if err := json.Unmarshal(m, &msg); err != nil {
+			c.Conn.WriteJSON(&fiber.Map{"error": "Malformed data..."})
+			continue
 		}
 
-		h.broadcast <- &data
+		if len(msg.BelongsTo) > 0 {
+			h.NewBroadcast(&msg)
+		} else {
+			c.Conn.WriteJSON(&fiber.Map{"error": "Please include belongs_to: [...ids]"})
+		}
 	}
 }

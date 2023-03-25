@@ -35,6 +35,11 @@ func main() {
 
 	hub := ws.NewHub()
 	go hub.Run()
+
+	app.Use(func(c *fiber.Ctx) error {
+		c.Locals("ws-hub", hub)
+		return c.Next()
+	})
 	routes.InitRouter(app, hub)
 
 	// Launch Application
