@@ -48,7 +48,7 @@ func (h *Hub) Run() {
 			cl.mu.Unlock()
 		case msg := <-h.broadcast:
 			go func(m *Message) { // run in parallel so we don't block on messages belonging to many users
-				for _, id := range m.BelongsTo {
+				for _, id := range m.To {
 					h.mu.Lock()
 					clients, ok := h.clients[id]
 					h.mu.Unlock()

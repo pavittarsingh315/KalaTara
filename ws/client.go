@@ -2,6 +2,7 @@ package ws
 
 import (
 	"encoding/json"
+	"errors"
 	"log"
 	"sync"
 	"time"
@@ -21,9 +22,11 @@ type client struct {
 }
 
 type Message struct {
-	BelongsTo []string  `json:"belongs_to"`
-	Body      string    `json:"body"`
-	Received  time.Time `json:"received"`
+	To       []string  `json:"to,omitempty"`
+	From     string    `json:"from"`
+	ChatId   string    `json:"chat_id"`
+	Body     string    `json:"body"`
+	Received time.Time `json:"received"`
 }
 
 func (c *client) writeMessage() {
@@ -36,6 +39,8 @@ func (c *client) writeMessage() {
 		if !ok { // if no message was received
 			return
 		}
+
+		message.To = []string{} // make empty to omit in response
 
 		c.Conn.WriteJSON(message)
 	}
@@ -62,10 +67,23 @@ func (c *client) readMessage(h *Hub) {
 			continue
 		}
 
-		if len(msg.BelongsTo) > 0 {
-			h.NewBroadcast(&msg)
-		} else {
-			c.Conn.WriteJSON(&fiber.Map{"error": "Please include belongs_to: [...ids]"})
+		if err := msg.Format(c); err != nil {
+			c.Conn.WriteJSON(&fiber.Map{"error": err.Error()})
+			continue
 		}
+
+		h.NewBroadcast(&msg)
 	}
+}
+
+func (m *Message) Format(c *client) error {
+	m.From = c.Profile.UserId
+	m.Received = time.Now()
+	if len(m.To) <= 0 {
+		return errors.New("to not provided")
+	}
+	if m.ChatId == "" {
+		return errors.New("chat id not provided")
+	}
+	return nil
 }
