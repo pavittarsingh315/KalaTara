@@ -29,6 +29,13 @@ func Initialize() {
 		DB:       db,
 	})
 
+	ctx := context.Background()
+	_, err = rdb.Ping(ctx).Result()
+	if err != nil {
+		log.Fatal("Error connecting to cache...")
+		panic(err)
+	}
+
 	log.Println("Redis connection established...")
 }
 
