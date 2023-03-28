@@ -221,6 +221,7 @@ func GetComments(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusOK).JSON(responses.NewSuccessResponse(fiber.StatusOK, &fiber.Map{
 		"data": &fiber.Map{
 			"current_page": page,
+			"per_page":     limit,
 			"last_page":    int(math.Ceil(float64(numComments) / float64(limit))),
 			"data":         comments,
 		},
@@ -262,6 +263,7 @@ func GetReplies(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusOK).JSON(responses.NewSuccessResponse(fiber.StatusOK, &fiber.Map{
 		"data": &fiber.Map{
 			"current_page": page,
+			"per_page":     limit,
 			"last_page":    int(math.Ceil(float64(numReplies) / float64(limit))),
 			"data":         replies,
 		},

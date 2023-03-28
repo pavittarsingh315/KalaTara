@@ -103,6 +103,7 @@ func GetLikesOfPost(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusOK).JSON(responses.NewSuccessResponse(fiber.StatusOK, &fiber.Map{
 		"data": &fiber.Map{
 			"current_page": page,
+			"per_page":     limit,
 			"last_page":    int(math.Ceil(float64(numLikes) / float64(limit))),
 			"data":         postLikers,
 		},
@@ -135,6 +136,7 @@ func GetDislikesOfPost(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusOK).JSON(responses.NewSuccessResponse(fiber.StatusOK, &fiber.Map{
 		"data": &fiber.Map{
 			"current_page": page,
+			"per_page":     limit,
 			"last_page":    int(math.Ceil(float64(numDislikes) / float64(limit))),
 			"data":         postDislikers,
 		},
@@ -183,6 +185,7 @@ func GetLikedPosts(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusOK).JSON(responses.NewSuccessResponse(fiber.StatusOK, &fiber.Map{
 		"data": &fiber.Map{
 			"current_page": page,
+			"per_page":     limit,
 			"last_page":    int(math.Ceil(float64(numLikes) / float64(limit))),
 			"data":         likedPosts,
 		},
@@ -231,6 +234,7 @@ func GetDisikedPosts(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusOK).JSON(responses.NewSuccessResponse(fiber.StatusOK, &fiber.Map{
 		"data": &fiber.Map{
 			"current_page": page,
+			"per_page":     limit,
 			"last_page":    int(math.Ceil(float64(numDislikes) / float64(limit))),
 			"data":         dislikedPosts,
 		},

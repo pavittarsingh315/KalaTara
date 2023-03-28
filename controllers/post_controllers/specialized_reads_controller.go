@@ -61,6 +61,7 @@ func GetFollowingsFeed(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusOK).JSON(responses.NewSuccessResponse(fiber.StatusOK, &fiber.Map{
 		"data": &fiber.Map{
 			"current_page": page,
+			"per_page":     limit,
 			"last_page":    int(math.Ceil(float64(numFeedPosts) / float64(limit))),
 			"data":         feedPosts,
 		},
@@ -118,6 +119,7 @@ func GetSubscriptionsFeed(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusOK).JSON(responses.NewSuccessResponse(fiber.StatusOK, &fiber.Map{
 		"data": &fiber.Map{
 			"current_page": page,
+			"per_page":     limit,
 			"last_page":    int(math.Ceil(float64(numFeedPosts) / float64(limit))),
 			"data":         feedPosts,
 		},
@@ -164,6 +166,7 @@ func GetArchivedPosts(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusOK).JSON(responses.NewSuccessResponse(fiber.StatusOK, &fiber.Map{
 		"data": &fiber.Map{
 			"current_page": page,
+			"per_page":     limit,
 			"last_page":    int(math.Ceil(float64(numArchivedPosts) / float64(limit))),
 			"data":         archivedPosts,
 		},
@@ -213,6 +216,7 @@ func GetPublicPosts(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusOK).JSON(responses.NewSuccessResponse(fiber.StatusOK, &fiber.Map{
 		"data": &fiber.Map{
 			"current_page": page,
+			"per_page":     limit,
 			"last_page":    int(math.Ceil(float64(numPublicPosts) / float64(limit))),
 			"data":         publicPosts,
 		},
@@ -262,6 +266,7 @@ func GetExclusivePosts(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusOK).JSON(responses.NewSuccessResponse(fiber.StatusOK, &fiber.Map{
 		"data": &fiber.Map{
 			"current_page": page,
+			"per_page":     limit,
 			"last_page":    int(math.Ceil(float64(numExclusivePosts) / float64(limit))),
 			"data":         exclusivePosts,
 		},

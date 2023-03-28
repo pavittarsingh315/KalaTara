@@ -127,6 +127,7 @@ func GetBookmarkedPosts(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusOK).JSON(responses.NewSuccessResponse(fiber.StatusOK, &fiber.Map{
 		"data": &fiber.Map{
 			"current_page": page,
+			"per_page":     limit,
 			"last_page":    int(math.Ceil(float64(numBookmarks) / float64(limit))),
 			"data":         bookmarkedPosts,
 		},

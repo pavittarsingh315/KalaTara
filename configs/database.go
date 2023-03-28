@@ -1,7 +1,9 @@
 package configs
 
 import (
+	"context"
 	"log"
+	"time"
 
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -10,6 +12,10 @@ import (
 
 var (
 	Database *gorm.DB
+)
+
+const (
+	queryTimeout = 3 * time.Second
 )
 
 func InitDatabase() {
@@ -76,4 +82,8 @@ func setupJoinTables(db *gorm.DB) error {
 	}
 
 	return nil
+}
+
+func NewQueryContext() (context.Context, context.CancelFunc) {
+	return context.WithTimeout(context.Background(), queryTimeout)
 }

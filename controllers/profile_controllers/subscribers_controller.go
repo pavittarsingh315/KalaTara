@@ -177,6 +177,7 @@ func GetSubscribers(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusOK).JSON(responses.NewSuccessResponse(fiber.StatusOK, &fiber.Map{
 		"data": &fiber.Map{
 			"current_page": page,
+			"per_page":     limit,
 			"last_page":    int(math.Ceil(float64(numSubscribers) / float64(limit))),
 			"data":         subscribers,
 		},
@@ -213,6 +214,7 @@ func GetSubscriptions(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusOK).JSON(responses.NewSuccessResponse(fiber.StatusOK, &fiber.Map{
 		"data": &fiber.Map{
 			"current_page": page,
+			"per_page":     limit,
 			"last_page":    int(math.Ceil(float64(numSubscriptions) / float64(limit))),
 			"data":         subscriptions,
 		},
@@ -249,6 +251,7 @@ func GetInvitesSent(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusOK).JSON(responses.NewSuccessResponse(fiber.StatusOK, &fiber.Map{
 		"data": &fiber.Map{
 			"current_page": page,
+			"per_page":     limit,
 			"last_page":    int(math.Ceil(float64(numInvitesSent) / float64(limit))),
 			"data":         invitesSent,
 		},
@@ -284,6 +287,7 @@ func GetInvitesReceived(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusOK).JSON(responses.NewSuccessResponse(fiber.StatusOK, &fiber.Map{
 		"data": &fiber.Map{
 			"current_page": page,
+			"per_page":     limit,
 			"last_page":    int(math.Ceil(float64(numInvitesReceived) / float64(limit))),
 			"data":         invitesReceived,
 		},
@@ -319,6 +323,7 @@ func GetRequestsSent(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusOK).JSON(responses.NewSuccessResponse(fiber.StatusOK, &fiber.Map{
 		"data": &fiber.Map{
 			"current_page": page,
+			"per_page":     limit,
 			"last_page":    int(math.Ceil(float64(numRequestsSent) / float64(limit))),
 			"data":         requestsSent,
 		},
@@ -354,6 +359,7 @@ func GetRequestsReceived(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusOK).JSON(responses.NewSuccessResponse(fiber.StatusOK, &fiber.Map{
 		"data": &fiber.Map{
 			"current_page": page,
+			"per_page":     limit,
 			"last_page":    int(math.Ceil(float64(numRequestsReceived) / float64(limit))),
 			"data":         requestsReceived,
 		},
