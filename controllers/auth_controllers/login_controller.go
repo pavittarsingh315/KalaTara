@@ -1,7 +1,6 @@
 package authcontrollers
 
 import (
-	"context"
 	"fmt"
 	"strings"
 	"time"
@@ -61,10 +60,11 @@ func Login(c *fiber.Ctx) error {
 	access, refresh := utils.GenAuthTokens(user.Id)
 
 	// Cache profile
-	ctx := context.Background()
+	cacheCtx, cacheCancel := cache.NewCacheContext()
+	defer cacheCancel()
 	var key = cache.ProfileKey(user.Id)
 	var exp = cache.ProfileExp
-	if err := cache.Set(ctx, key, user.Profile, exp); err != nil {
+	if err := cache.Set(cacheCtx, key, user.Profile, exp); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
 	}
 
@@ -134,10 +134,11 @@ func TokenLogin(c *fiber.Ctx) error {
 	}
 
 	// Cache profile
-	ctx := context.Background()
+	cacheCtx, cacheCancel := cache.NewCacheContext()
+	defer cacheCancel()
 	var key = cache.ProfileKey(user.Id)
 	var exp = cache.ProfileExp
-	if err := cache.Set(ctx, key, user.Profile, exp); err != nil {
+	if err := cache.Set(cacheCtx, key, user.Profile, exp); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
 	}
 

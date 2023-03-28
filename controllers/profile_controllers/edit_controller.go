@@ -1,7 +1,6 @@
 package profilecontrollers
 
 import (
-	"context"
 	"fmt"
 	"strings"
 
@@ -52,10 +51,11 @@ func EditUsername(c *fiber.Ctx) error {
 	}
 
 	// Update cached profile
-	ctx := context.Background()
+	cacheCtx, cacheCancel := cache.NewCacheContext()
+	defer cacheCancel()
 	var key = cache.ProfileKey(reqProfile.UserId)
 	var exp = cache.ProfileExp
-	if err := cache.Set(ctx, key, reqProfile, exp); err != nil {
+	if err := cache.Set(cacheCtx, key, reqProfile, exp); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
 	}
 
@@ -91,10 +91,11 @@ func EditName(c *fiber.Ctx) error {
 	}
 
 	// Update cached profile
-	ctx := context.Background()
+	cacheCtx, cacheCancel := cache.NewCacheContext()
+	defer cacheCancel()
 	var key = cache.ProfileKey(reqProfile.UserId)
 	var exp = cache.ProfileExp
-	if err := cache.Set(ctx, key, reqProfile, exp); err != nil {
+	if err := cache.Set(cacheCtx, key, reqProfile, exp); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
 	}
 
@@ -133,10 +134,11 @@ func EditBio(c *fiber.Ctx) error {
 	}
 
 	// Update cached profile
-	ctx := context.Background()
+	cacheCtx, cacheCancel := cache.NewCacheContext()
+	defer cacheCancel()
 	var key = cache.ProfileKey(reqProfile.UserId)
 	var exp = cache.ProfileExp
-	if err := cache.Set(ctx, key, reqProfile, exp); err != nil {
+	if err := cache.Set(cacheCtx, key, reqProfile, exp); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
 	}
 

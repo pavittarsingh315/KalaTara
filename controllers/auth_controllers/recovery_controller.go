@@ -1,7 +1,6 @@
 package authcontrollers
 
 import (
-	"context"
 	"fmt"
 	"strings"
 
@@ -41,11 +40,14 @@ func RequestPasswordReset(c *fiber.Ctx) error {
 	}
 
 	// Check if reset is already initiated
-	ctx := context.Background()
+	cacheCtx, cacheCancel := cache.NewCacheContext()
+	defer cacheCancel()
 	var key = cache.PasswordResetCodeKey(reqBody.Contact)
 	var resetCode string
-	if err := cache.Get(ctx, key, &resetCode); err == nil { // no error => key exists ie hasnt expired
-		dur, _ := cache.ExpiresIn(ctx, key)
+	if err := cache.Get(cacheCtx, key, &resetCode); err == nil { // no error => key exists ie hasnt expired
+		cacheCtx, cacheCancel := cache.NewCacheContext()
+		defer cacheCancel()
+		dur, _ := cache.ExpiresIn(cacheCtx, key)
 		message := fmt.Sprintf("Try again in %s.", utils.SecondsToString(int64(dur.Seconds())))
 		return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": message}))
 	} else if err != redis.Nil {
@@ -53,9 +55,11 @@ func RequestPasswordReset(c *fiber.Ctx) error {
 	}
 
 	// Create password reset code in cache
+	cacheCtx2, cacheCancel2 := cache.NewCacheContext()
+	defer cacheCancel2()
 	var code = utils.GenerateRandomCode(6)
 	var exp = cache.PasswordResetCodeEXP
-	if err := cache.Set(ctx, key, utils.HashPassword(code), exp); err != nil {
+	if err := cache.Set(cacheCtx2, key, utils.HashPassword(code), exp); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
 	}
 
@@ -88,10 +92,11 @@ func ConfirmResetCode(c *fiber.Ctx) error {
 	reqBody.Contact = strings.ToLower(strings.ReplaceAll(reqBody.Contact, " ", "")) // remove all whitespace and make lowercase
 
 	// Check if reset code exists
-	ctx := context.Background()
+	cacheCtx, cacheCancel := cache.NewCacheContext()
+	defer cacheCancel()
 	var key = cache.PasswordResetCodeKey(reqBody.Contact)
 	var resetCode string
-	if err := cache.Get(ctx, key, &resetCode); err != nil {
+	if err := cache.Get(cacheCtx, key, &resetCode); err != nil {
 		if err == redis.Nil {
 			return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": "Code has expired. Please restart the recovery process."}))
 		} else {
@@ -131,10 +136,11 @@ func ConfirmPasswordReset(c *fiber.Ctx) error {
 	reqBody.Contact = strings.ToLower(strings.ReplaceAll(reqBody.Contact, " ", "")) // remove all whitespace and make lowercase
 
 	// Check if reset code exists
-	ctx := context.Background()
+	cacheCtx, cacheCancel := cache.NewCacheContext()
+	defer cacheCancel()
 	var key = cache.PasswordResetCodeKey(reqBody.Contact)
 	var resetCode string
-	if err := cache.Get(ctx, key, &resetCode); err != nil {
+	if err := cache.Get(cacheCtx, key, &resetCode); err != nil {
 		if err == redis.Nil {
 			return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": "Code has expired. Please restart the recovery process."}))
 		} else {
@@ -156,7 +162,9 @@ func ConfirmPasswordReset(c *fiber.Ctx) error {
 	}
 
 	// Delete reset code from cache
-	cache.Delete(ctx, key)
+	cacheCtx2, cacheCancel2 := cache.NewCacheContext()
+	defer cacheCancel2()
+	cache.Delete(cacheCtx2, key)
 
 	return c.Status(fiber.StatusOK).JSON(responses.NewSuccessResponse(fiber.StatusOK, &fiber.Map{"data": "Password has successfully been updated."}))
 }

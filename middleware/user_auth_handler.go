@@ -1,8 +1,6 @@
 package middleware
 
 import (
-	"context"
-
 	"github.com/gofiber/fiber/v2"
 	"github.com/redis/go-redis/v9"
 	"nerajima.com/NeraJima/configs"
@@ -18,7 +16,6 @@ func UserAuthHandler(c *fiber.Ctx) error {
 		UserId string `reqHeader:"userId"`
 	}{}
 	errMessage := "Could not authorize action."
-	ctx := context.Background()
 
 	if err := c.ReqHeaderParser(&reqHeader); err != nil || reqHeader.Token == "" || reqHeader.UserId == "" {
 		return c.Status(fiber.StatusUnauthorized).JSON(responses.NewErrorResponse(fiber.StatusUnauthorized, &fiber.Map{"data": errMessage}))
@@ -29,10 +26,12 @@ func UserAuthHandler(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusUnauthorized).JSON(responses.NewErrorResponse(fiber.StatusUnauthorized, &fiber.Map{"data": errMessage}))
 	}
 
+	cacheCtx, cacheCancel := cache.NewCacheContext()
+	defer cacheCancel()
 	var profile models.Profile
 	var key = cache.ProfileKey(accessBody.UserId)
 	var exp = cache.ProfileExp
-	if err := cache.Get(ctx, key, &profile); err != nil {
+	if err := cache.Get(cacheCtx, key, &profile); err != nil {
 		if err == redis.Nil { // key does not exist
 			if err := configs.Database.Model(&models.Profile{}).Find(&profile, "user_id = ?", accessBody.UserId).Error; err != nil {
 				return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
@@ -42,7 +41,9 @@ func UserAuthHandler(c *fiber.Ctx) error {
 			}
 
 			// Cache profile
-			if err := cache.Set(ctx, key, profile, exp); err != nil {
+			cacheCtx, cacheCancel := cache.NewCacheContext()
+			defer cacheCancel()
+			if err := cache.Set(cacheCtx, key, profile, exp); err != nil {
 				return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
 			}
 		} else {

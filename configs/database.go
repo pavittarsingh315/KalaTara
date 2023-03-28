@@ -15,7 +15,7 @@ var (
 )
 
 const (
-	queryTimeout = 3 * time.Second
+	queryTimeout = time.Second
 )
 
 func InitDatabase() {

@@ -1,7 +1,6 @@
 package authcontrollers
 
 import (
-	"context"
 	"fmt"
 	"strings"
 	"time"
@@ -83,11 +82,14 @@ func InitiateRegistration(c *fiber.Ctx) error {
 	}
 
 	// Check if registration is already initiated
-	ctx := context.Background()
+	cacheCtx, cacheCancel := cache.NewCacheContext()
+	defer cacheCancel()
 	var key = cache.NewUserConfirmCodeKey(reqBody.Contact)
 	var confirmationCode string
-	if err := cache.Get(ctx, key, &confirmationCode); err == nil { // no error => key exists ie hasnt expired
-		dur, _ := cache.ExpiresIn(ctx, key)
+	if err := cache.Get(cacheCtx, key, &confirmationCode); err == nil { // no error => key exists ie hasnt expired
+		cacheCtx, cacheCancel := cache.NewCacheContext()
+		defer cacheCancel()
+		dur, _ := cache.ExpiresIn(cacheCtx, key)
 		message := fmt.Sprintf("Try again in %s.", utils.SecondsToString(int64(dur.Seconds())))
 		return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": message}))
 	} else if err != redis.Nil {
@@ -95,9 +97,11 @@ func InitiateRegistration(c *fiber.Ctx) error {
 	}
 
 	// Create new user confirm code in cache
+	cacheCtx2, cacheCancel2 := cache.NewCacheContext()
+	defer cacheCancel2()
 	var code = utils.GenerateRandomCode(6)
 	var exp = cache.NewUserConfirmCodeExp
-	if err := cache.Set(ctx, key, utils.HashPassword(code), exp); err != nil {
+	if err := cache.Set(cacheCtx2, key, utils.HashPassword(code), exp); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
 	}
 
@@ -164,10 +168,11 @@ func FinalizeRegistration(c *fiber.Ctx) error {
 	}
 
 	// Get confirmation code
-	ctx := context.Background()
+	cacheCtx, cacheCancel := cache.NewCacheContext()
+	defer cacheCancel()
 	var key = cache.NewUserConfirmCodeKey(reqBody.Contact)
 	var confirmationCode string
-	if err := cache.Get(ctx, key, &confirmationCode); err != nil {
+	if err := cache.Get(cacheCtx, key, &confirmationCode); err != nil {
 		if err == redis.Nil {
 			return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": "Code has expired. Please restart the registration process."}))
 		} else {
@@ -210,15 +215,19 @@ func FinalizeRegistration(c *fiber.Ctx) error {
 	}
 
 	// Delete confirmation code from cache
-	cache.Delete(ctx, key)
+	cacheCtx2, cacheCancel2 := cache.NewCacheContext()
+	defer cacheCancel2()
+	cache.Delete(cacheCtx2, key)
 
 	// Generate auth tokens
 	access, refresh := utils.GenAuthTokens(newUser.Id)
 
 	// Cache profile
+	cacheCtx3, cacheCancel3 := cache.NewCacheContext()
+	defer cacheCancel3()
 	key = cache.ProfileKey(newUser.Id)
 	var exp = cache.ProfileExp
-	if err := cache.Set(ctx, key, newProfile, exp); err != nil {
+	if err := cache.Set(cacheCtx3, key, newProfile, exp); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
 	}
 

@@ -15,6 +15,10 @@ var (
 	rdb *redis.Client
 )
 
+const (
+	cacheQueryTimeout = 500 * time.Millisecond
+)
+
 func Initialize() {
 	db, err := strconv.Atoi(configs.EnvRedisDatabase())
 	if err != nil {
@@ -29,7 +33,8 @@ func Initialize() {
 		DB:       db,
 	})
 
-	ctx := context.Background()
+	ctx, cancel := NewCacheContext()
+	defer cancel()
 	_, err = rdb.Ping(ctx).Result()
 	if err != nil {
 		log.Fatal("Error connecting to cache...")
@@ -37,6 +42,10 @@ func Initialize() {
 	}
 
 	log.Println("Redis connection established...")
+}
+
+func NewCacheContext() (context.Context, context.CancelFunc) {
+	return context.WithTimeout(context.Background(), cacheQueryTimeout)
 }
 
 // Gets value for a key if it exists. dest must be a pointer.
