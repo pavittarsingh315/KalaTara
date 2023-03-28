@@ -31,8 +31,10 @@ func RequestPasswordReset(c *fiber.Ctx) error {
 	reqBody.Contact = strings.ToLower(strings.ReplaceAll(reqBody.Contact, " ", "")) // remove all whitespace and make lowercase
 
 	// Check if account exists
+	dbCtx, dbCancel := configs.NewQueryContext()
+	defer dbCancel()
 	var user models.User
-	if err := configs.Database.Model(&models.User{}).Find(&user, "contact = ?", reqBody.Contact).Error; err != nil {
+	if err := configs.Database.WithContext(dbCtx).Model(&models.User{}).Find(&user, "contact = ?", reqBody.Contact).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
 	}
 	if user.Contact == "" { // contact field is empty => user with contact doesn't exist
@@ -157,7 +159,9 @@ func ConfirmPasswordReset(c *fiber.Ctx) error {
 	// So theres no need to check now if a user exists with contact = reqBody.Contact because the only way the reset code is created is if thats true.
 
 	// Update password
-	if err := configs.Database.Model(&models.User{}).Where("contact = ?", reqBody.Contact).Update("password", utils.HashPassword(reqBody.Password)).Error; err != nil {
+	dbCtx, dbCancel := configs.NewQueryContext()
+	defer dbCancel()
+	if err := configs.Database.WithContext(dbCtx).Model(&models.User{}).Where("contact = ?", reqBody.Contact).Update("password", utils.HashPassword(reqBody.Password)).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
 	}
 

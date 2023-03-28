@@ -59,8 +59,10 @@ func InitiateRegistration(c *fiber.Ctx) error {
 	}
 
 	// Check if username is taken
+	dbCtx, dbCancel := configs.NewQueryContext()
+	defer dbCancel()
 	var profile models.Profile
-	if err := configs.Database.Model(&models.Profile{}).Find(&profile, "username = ?", reqBody.Username).Error; err != nil {
+	if err := configs.Database.WithContext(dbCtx).Model(&models.Profile{}).Find(&profile, "username = ?", reqBody.Username).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
 	}
 	if profile.Username != "" { // username field is not empty => profile with username exists
@@ -68,9 +70,11 @@ func InitiateRegistration(c *fiber.Ctx) error {
 	}
 
 	// Check if contact is taken
+	dbCtx2, dbCancel2 := configs.NewQueryContext()
+	defer dbCancel2()
 	contactIsEmail := utils.ValidateEmail(reqBody.Contact)
 	var user models.User
-	if err := configs.Database.Model(&models.User{}).Find(&user, "contact = ?", reqBody.Contact).Error; err != nil {
+	if err := configs.Database.WithContext(dbCtx2).Model(&models.User{}).Find(&user, "contact = ?", reqBody.Contact).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
 	}
 	if user.Contact != "" { // contact field is not empty => user with contact exists
@@ -159,8 +163,10 @@ func FinalizeRegistration(c *fiber.Ctx) error {
 	}
 
 	// Check if username is taken
+	dbCtx, dbCancel := configs.NewQueryContext()
+	defer dbCancel()
 	var profile models.Profile
-	if err := configs.Database.Model(&models.Profile{}).Find(&profile, "username = ?", reqBody.Username).Error; err != nil {
+	if err := configs.Database.WithContext(dbCtx).Model(&models.Profile{}).Find(&profile, "username = ?", reqBody.Username).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
 	}
 	if profile.Username != "" { // username field is not empty => profile with username exists
@@ -196,7 +202,9 @@ func FinalizeRegistration(c *fiber.Ctx) error {
 		LastLogin: time.Now(),
 		BanTill:   time.Now(),
 	}
-	if err := configs.Database.Model(&models.User{}).Create(&newUser).Error; err != nil {
+	dbCtx2, dbCancel2 := configs.NewQueryContext()
+	defer dbCancel2()
+	if err := configs.Database.WithContext(dbCtx2).Model(&models.User{}).Create(&newUser).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
 	}
 
@@ -210,7 +218,9 @@ func FinalizeRegistration(c *fiber.Ctx) error {
 		MiniAvatar: "https://nerajima.s3.us-west-1.amazonaws.com/default.jpg",
 		Birthday:   reqBody.Birthday,
 	}
-	if err := configs.Database.Model(&models.Profile{}).Create(&newProfile).Error; err != nil {
+	dbCtx3, dbCancel3 := configs.NewQueryContext()
+	defer dbCancel3()
+	if err := configs.Database.WithContext(dbCtx3).Model(&models.Profile{}).Create(&newProfile).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
 	}
 

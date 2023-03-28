@@ -33,7 +33,9 @@ func UserAuthHandler(c *fiber.Ctx) error {
 	var exp = cache.ProfileExp
 	if err := cache.Get(cacheCtx, key, &profile); err != nil {
 		if err == redis.Nil { // key does not exist
-			if err := configs.Database.Model(&models.Profile{}).Find(&profile, "user_id = ?", accessBody.UserId).Error; err != nil {
+			dbCtx, dbCancel := configs.NewQueryContext()
+			defer dbCancel()
+			if err := configs.Database.WithContext(dbCtx).Model(&models.Profile{}).Find(&profile, "user_id = ?", accessBody.UserId).Error; err != nil {
 				return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
 			}
 			if profile.Id == "" { // Id field is empty => Account is not found

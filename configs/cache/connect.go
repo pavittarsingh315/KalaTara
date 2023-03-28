@@ -44,6 +44,7 @@ func Initialize() {
 	log.Println("Redis connection established...")
 }
 
+// Returns a new context with a timeout of 500 milliseconds
 func NewCacheContext() (context.Context, context.CancelFunc) {
 	return context.WithTimeout(context.Background(), cacheQueryTimeout)
 }

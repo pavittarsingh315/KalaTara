@@ -84,6 +84,7 @@ func setupJoinTables(db *gorm.DB) error {
 	return nil
 }
 
+// Returns a context with a timeout of 1 second
 func NewQueryContext() (context.Context, context.CancelFunc) {
 	return context.WithTimeout(context.Background(), queryTimeout)
 }
