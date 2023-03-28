@@ -62,10 +62,10 @@ func RequestPasswordReset(c *fiber.Ctx) error {
 	// Send Reset Code
 	contactIsEmail := utils.ValidateEmail(reqBody.Contact)
 	if contactIsEmail {
-		utils.SendPasswordResetEmail(user.Name, user.Contact, code)
+		go utils.SendPasswordResetEmail(user.Name, user.Contact, code)
 		return c.Status(fiber.StatusOK).JSON(responses.NewSuccessResponse(fiber.StatusOK, &fiber.Map{"data": "An email has been sent with a reset verification code."}))
 	} else {
-		utils.SendPasswordResetText(code, user.Contact)
+		go utils.SendPasswordResetText(code, user.Contact)
 		return c.Status(fiber.StatusOK).JSON(responses.NewSuccessResponse(fiber.StatusOK, &fiber.Map{"data": "A text has been sent with a reset verification code."}))
 	}
 }
