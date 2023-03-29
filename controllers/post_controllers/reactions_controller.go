@@ -15,8 +15,10 @@ func LikePost(c *fiber.Ctx) error {
 	var reqProfile models.Profile = c.Locals("profile").(models.Profile)
 
 	// Delete the dislike object(if it exists)
+	dbCtx, dbCancel := configs.NewQueryContext()
+	defer dbCancel()
 	var dislikeObj models.PostDislike
-	if err := configs.Database.Table("post_dislikes").Delete(&dislikeObj, "post_id = ? AND profile_id = ?", c.Params("postId"), reqProfile.Id).Error; err != nil {
+	if err := configs.Database.WithContext(dbCtx).Table("post_dislikes").Delete(&dislikeObj, "post_id = ? AND profile_id = ?", c.Params("postId"), reqProfile.Id).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}, err))
 	}
 
@@ -25,7 +27,9 @@ func LikePost(c *fiber.Ctx) error {
 		ProfileId: reqProfile.Id,
 		CreatedAt: time.Now(),
 	}
-	if err := configs.Database.Table("post_likes").Where("post_id = ? AND profile_id = ?", newLikeObj.PostId, newLikeObj.ProfileId).FirstOrCreate(&newLikeObj).Error; err != nil {
+	dbCtx2, dbCancel2 := configs.NewQueryContext()
+	defer dbCancel2()
+	if err := configs.Database.WithContext(dbCtx2).Table("post_likes").Where("post_id = ? AND profile_id = ?", newLikeObj.PostId, newLikeObj.ProfileId).FirstOrCreate(&newLikeObj).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}, err))
 	}
 
@@ -36,8 +40,10 @@ func DislikePost(c *fiber.Ctx) error {
 	var reqProfile models.Profile = c.Locals("profile").(models.Profile)
 
 	// Delete the like object(if it exists)
+	dbCtx, dbCancel := configs.NewQueryContext()
+	defer dbCancel()
 	var likeObj models.PostLike
-	if err := configs.Database.Table("post_likes").Delete(&likeObj, "post_id = ? AND profile_id = ?", c.Params("postId"), reqProfile.Id).Error; err != nil {
+	if err := configs.Database.WithContext(dbCtx).Table("post_likes").Delete(&likeObj, "post_id = ? AND profile_id = ?", c.Params("postId"), reqProfile.Id).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}, err))
 	}
 
@@ -46,7 +52,9 @@ func DislikePost(c *fiber.Ctx) error {
 		ProfileId: reqProfile.Id,
 		CreatedAt: time.Now(),
 	}
-	if err := configs.Database.Table("post_dislikes").Where("post_id = ? AND profile_id = ?", newDislikeObj.PostId, newDislikeObj.ProfileId).FirstOrCreate(&newDislikeObj).Error; err != nil {
+	dbCtx2, dbCancel2 := configs.NewQueryContext()
+	defer dbCancel2()
+	if err := configs.Database.WithContext(dbCtx2).Table("post_dislikes").Where("post_id = ? AND profile_id = ?", newDislikeObj.PostId, newDislikeObj.ProfileId).FirstOrCreate(&newDislikeObj).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}, err))
 	}
 
@@ -57,8 +65,10 @@ func RemoveLike(c *fiber.Ctx) error {
 	var reqProfile models.Profile = c.Locals("profile").(models.Profile)
 
 	// Delete the object
+	dbCtx, dbCancel := configs.NewQueryContext()
+	defer dbCancel()
 	var likeObj models.PostLike
-	if err := configs.Database.Table("post_likes").Delete(&likeObj, "post_id = ? AND profile_id = ?", c.Params("postId"), reqProfile.Id).Error; err != nil {
+	if err := configs.Database.WithContext(dbCtx).Table("post_likes").Delete(&likeObj, "post_id = ? AND profile_id = ?", c.Params("postId"), reqProfile.Id).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}, err))
 	}
 
@@ -69,8 +79,10 @@ func RemoveDislike(c *fiber.Ctx) error {
 	var reqProfile models.Profile = c.Locals("profile").(models.Profile)
 
 	// Delete the object
+	dbCtx, dbCancel := configs.NewQueryContext()
+	defer dbCancel()
 	var dislikeObj models.PostDislike
-	if err := configs.Database.Table("post_dislikes").Delete(&dislikeObj, "post_id = ? AND profile_id = ?", c.Params("postId"), reqProfile.Id).Error; err != nil {
+	if err := configs.Database.WithContext(dbCtx).Table("post_dislikes").Delete(&dislikeObj, "post_id = ? AND profile_id = ?", c.Params("postId"), reqProfile.Id).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}, err))
 	}
 
@@ -92,13 +104,17 @@ func GetLikesOfPost(c *fiber.Ctx) error {
 			"ORDER BY post_likes.created_at DESC LIMIT %d OFFSET %d",
 		c.Params("postId"), limit, offset,
 	)
-	if err := configs.Database.Raw(query).Scan(&postLikers).Error; err != nil {
+	dbCtx, dbCancel := configs.NewQueryContext()
+	defer dbCancel()
+	if err := configs.Database.WithContext(dbCtx).Raw(query).Scan(&postLikers).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}, err))
 	}
 
 	// Get total number of likes
 	var post = models.Post{Base: models.Base{Id: c.Params("postId")}}
-	numLikes := configs.Database.Model(&post).Association("Likes").Count()
+	dbCtx2, dbCancel2 := configs.NewQueryContext()
+	defer dbCancel2()
+	numLikes := configs.Database.WithContext(dbCtx2).Model(&post).Association("Likes").Count()
 
 	return c.Status(fiber.StatusOK).JSON(responses.NewSuccessResponse(fiber.StatusOK, &fiber.Map{
 		"data": &fiber.Map{
@@ -125,13 +141,17 @@ func GetDislikesOfPost(c *fiber.Ctx) error {
 			"ORDER BY post_dislikes.created_at DESC LIMIT %d OFFSET %d",
 		c.Params("postId"), limit, offset,
 	)
-	if err := configs.Database.Raw(query).Scan(&postDislikers).Error; err != nil {
+	dbCtx, dbCancel := configs.NewQueryContext()
+	defer dbCancel()
+	if err := configs.Database.WithContext(dbCtx).Raw(query).Scan(&postDislikers).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}, err))
 	}
 
 	// Get total number of likes
 	var post = models.Post{Base: models.Base{Id: c.Params("postId")}}
-	numDislikes := configs.Database.Model(&post).Association("Dislikes").Count()
+	dbCtx2, dbCancel2 := configs.NewQueryContext()
+	defer dbCancel2()
+	numDislikes := configs.Database.WithContext(dbCtx2).Model(&post).Association("Dislikes").Count()
 
 	return c.Status(fiber.StatusOK).JSON(responses.NewSuccessResponse(fiber.StatusOK, &fiber.Map{
 		"data": &fiber.Map{
@@ -171,14 +191,18 @@ func GetLikedPosts(c *fiber.Ctx) error {
 		reqProfile.Id, reqProfile.Id, reqProfile.Id, 0, limit, offset,
 	)
 	var unpreparedLikedPosts = []postsWithoutMedia{}
-	if err := configs.Database.Raw(query).Scan(&unpreparedLikedPosts).Error; err != nil {
+	dbCtx, dbCancel := configs.NewQueryContext()
+	defer dbCancel()
+	if err := configs.Database.WithContext(dbCtx).Raw(query).Scan(&unpreparedLikedPosts).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}, err))
 	}
 
 	var likedPosts = preparePosts(&unpreparedLikedPosts, false, true, false)
 
 	var numLikes int64
-	if err := configs.Database.Table("post_likes").Where("profile_id = ?", reqProfile.Id).Count(&numLikes).Error; err != nil {
+	dbCtx2, dbCancel2 := configs.NewQueryContext()
+	defer dbCancel2()
+	if err := configs.Database.WithContext(dbCtx2).Table("post_likes").Where("profile_id = ?", reqProfile.Id).Count(&numLikes).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}, err))
 	}
 
@@ -220,14 +244,18 @@ func GetDisikedPosts(c *fiber.Ctx) error {
 		reqProfile.Id, reqProfile.Id, reqProfile.Id, 0, limit, offset,
 	)
 	var unpreparedDislikedPosts = []postsWithoutMedia{}
-	if err := configs.Database.Raw(query).Scan(&unpreparedDislikedPosts).Error; err != nil {
+	dbCtx, dbCancel := configs.NewQueryContext()
+	defer dbCancel()
+	if err := configs.Database.WithContext(dbCtx).Raw(query).Scan(&unpreparedDislikedPosts).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}, err))
 	}
 
 	var dislikedPosts = preparePosts(&unpreparedDislikedPosts, false, false, true)
 
 	var numDislikes int64
-	if err := configs.Database.Table("post_dislikes").Where("profile_id = ?", reqProfile.Id).Count(&numDislikes).Error; err != nil {
+	dbCtx2, dbCancel2 := configs.NewQueryContext()
+	defer dbCancel2()
+	if err := configs.Database.WithContext(dbCtx2).Table("post_dislikes").Where("profile_id = ?", reqProfile.Id).Count(&numDislikes).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}, err))
 	}
 

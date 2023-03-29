@@ -38,8 +38,10 @@ func GetFollowingsFeed(c *fiber.Ctx) error {
 			"LIMIT %d OFFSET %d",
 		reqProfile.Id, reqProfile.Id, reqProfile.Id, reqProfile.Id, 0, 0, limit, offset,
 	)
+	dbCtx, dbCancel := configs.NewQueryContext()
+	defer dbCancel()
 	var unpreparedFeedPosts = []postsWithoutMedia{}
-	if err := configs.Database.Raw(query).Scan(&unpreparedFeedPosts).Error; err != nil {
+	if err := configs.Database.WithContext(dbCtx).Raw(query).Scan(&unpreparedFeedPosts).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}, err))
 	}
 
@@ -54,7 +56,9 @@ func GetFollowingsFeed(c *fiber.Ctx) error {
 			"JOIN posts as post ON post.profile_id = profile.id AND post.is_archived = %d AND post.for_subscribers_only = %d",
 		reqProfile.Id, 0, 0,
 	)
-	if err := configs.Database.Raw(query).Scan(&numFeedPosts).Error; err != nil {
+	dbCtx2, dbCancel2 := configs.NewQueryContext()
+	defer dbCancel2()
+	if err := configs.Database.WithContext(dbCtx2).Raw(query).Scan(&numFeedPosts).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}, err))
 	}
 
@@ -96,8 +100,10 @@ func GetSubscriptionsFeed(c *fiber.Ctx) error {
 			"LIMIT %d OFFSET %d",
 		reqProfile.Id, reqProfile.Id, reqProfile.Id, reqProfile.Id, 0, 1, limit, offset,
 	)
+	dbCtx, dbCancel := configs.NewQueryContext()
+	defer dbCancel()
 	var unpreparedFeedPosts = []postsWithoutMedia{}
-	if err := configs.Database.Raw(query).Scan(&unpreparedFeedPosts).Error; err != nil {
+	if err := configs.Database.WithContext(dbCtx).Raw(query).Scan(&unpreparedFeedPosts).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}, err))
 	}
 
@@ -112,7 +118,9 @@ func GetSubscriptionsFeed(c *fiber.Ctx) error {
 			"JOIN posts as post ON post.profile_id = profile.id AND post.is_archived = %d AND post.for_subscribers_only = %d",
 		reqProfile.Id, 0, 1,
 	)
-	if err := configs.Database.Raw(query).Scan(&numFeedPosts).Error; err != nil {
+	dbCtx2, dbCancel2 := configs.NewQueryContext()
+	defer dbCancel2()
+	if err := configs.Database.WithContext(dbCtx2).Raw(query).Scan(&numFeedPosts).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}, err))
 	}
 
@@ -154,14 +162,18 @@ func GetArchivedPosts(c *fiber.Ctx) error {
 		reqProfile.Id, reqProfile.Id, reqProfile.Id, reqProfile.Id, 1, limit, offset,
 	)
 	var unpreparedArchivedPosts = []postsWithoutMedia{}
-	if err := configs.Database.Raw(query).Scan(&unpreparedArchivedPosts).Error; err != nil {
+	dbCtx, dbCancel := configs.NewQueryContext()
+	defer dbCancel()
+	if err := configs.Database.WithContext(dbCtx).Raw(query).Scan(&unpreparedArchivedPosts).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}, err))
 	}
 
 	var archivedPosts = preparePosts(&unpreparedArchivedPosts, false, false, false)
 
 	// Get total number of archived posts
-	numArchivedPosts := configs.Database.Model(&reqProfile).Where("is_archived = ?", true).Association("Posts").Count()
+	dbCtx2, dbCancel2 := configs.NewQueryContext()
+	defer dbCancel2()
+	numArchivedPosts := configs.Database.WithContext(dbCtx2).Model(&reqProfile).Where("is_archived = ?", true).Association("Posts").Count()
 
 	return c.Status(fiber.StatusOK).JSON(responses.NewSuccessResponse(fiber.StatusOK, &fiber.Map{
 		"data": &fiber.Map{
@@ -200,16 +212,20 @@ func GetPublicPosts(c *fiber.Ctx) error {
 			"LIMIT %d OFFSET %d",
 		reqProfile.Id, reqProfile.Id, reqProfile.Id, c.Params("profileId"), 0, 0, limit, offset,
 	)
+	dbCtx, dbCancel := configs.NewQueryContext()
+	defer dbCancel()
 	var unpreparedPublicPosts = []postsWithoutMedia{}
-	if err := configs.Database.Raw(query).Scan(&unpreparedPublicPosts).Error; err != nil {
+	if err := configs.Database.WithContext(dbCtx).Raw(query).Scan(&unpreparedPublicPosts).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}, err))
 	}
 
 	var publicPosts = preparePosts(&unpreparedPublicPosts, false, false, false)
 
 	// Get total number of public posts
+	dbCtx2, dbCancel2 := configs.NewQueryContext()
+	defer dbCancel2()
 	var numPublicPosts int64
-	if err := configs.Database.Model(&models.Post{}).Where("profile_id = ? AND is_archived = ? AND for_subscribers_only = ?", c.Params("profileId"), false, false).Count(&numPublicPosts).Error; err != nil {
+	if err := configs.Database.WithContext(dbCtx2).Model(&models.Post{}).Where("profile_id = ? AND is_archived = ? AND for_subscribers_only = ?", c.Params("profileId"), false, false).Count(&numPublicPosts).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}, err))
 	}
 
@@ -250,16 +266,20 @@ func GetExclusivePosts(c *fiber.Ctx) error {
 			"LIMIT %d OFFSET %d",
 		reqProfile.Id, reqProfile.Id, reqProfile.Id, c.Params("profileId"), 0, 1, limit, offset,
 	)
+	dbCtx, dbCancel := configs.NewQueryContext()
+	defer dbCancel()
 	var unpreparedExclusivePosts = []postsWithoutMedia{}
-	if err := configs.Database.Raw(query).Scan(&unpreparedExclusivePosts).Error; err != nil {
+	if err := configs.Database.WithContext(dbCtx).Raw(query).Scan(&unpreparedExclusivePosts).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}, err))
 	}
 
 	var exclusivePosts = preparePosts(&unpreparedExclusivePosts, false, false, false)
 
 	// Get total number of public posts
+	dbCtx2, dbCancel2 := configs.NewQueryContext()
+	defer dbCancel2()
 	var numExclusivePosts int64
-	if err := configs.Database.Model(&models.Post{}).Where("profile_id = ? AND is_archived = ? AND for_subscribers_only = ?", c.Params("profileId"), false, true).Count(&numExclusivePosts).Error; err != nil {
+	if err := configs.Database.WithContext(dbCtx2).Model(&models.Post{}).Where("profile_id = ? AND is_archived = ? AND for_subscribers_only = ?", c.Params("profileId"), false, true).Count(&numExclusivePosts).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}, err))
 	}
 

@@ -69,7 +69,9 @@ func CreatePost(c *fiber.Ctx) error {
 		ForSubscribersOnly: *reqBody.ForSubscribersOnly,
 		IsArchived:         *reqBody.IsArchived,
 	}
-	if err := configs.Database.Model(&models.Post{}).Create(&newPost).Error; err != nil {
+	dbCtx, dbCancel := configs.NewQueryContext()
+	defer dbCancel()
+	if err := configs.Database.WithContext(dbCtx).Model(&models.Post{}).Create(&newPost).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}, err))
 	}
 
@@ -85,7 +87,9 @@ func CreatePost(c *fiber.Ctx) error {
 				IsAudio:  *mediaObj.IsAudio,
 			})
 		}
-		if err := configs.Database.Model(&models.PostMedia{}).Create(&postMedia).Error; err != nil {
+		dbCtx, dbCancel := configs.NewQueryContext()
+		defer dbCancel()
+		if err := configs.Database.WithContext(dbCtx).Model(&models.PostMedia{}).Create(&postMedia).Error; err != nil {
 			return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}, err))
 		}
 	}
@@ -121,8 +125,10 @@ func CreatePost(c *fiber.Ctx) error {
 func GetPost(c *fiber.Ctx) error {
 	var reqProfile models.Profile = c.Locals("profile").(models.Profile)
 
+	dbCtx, dbCancel := configs.NewQueryContext()
+	defer dbCancel()
 	var post models.Post
-	if err := configs.Database.Model(&models.Post{}).Preload("Media").Find(&post, "id = ?", c.Params("postId")).Error; err != nil {
+	if err := configs.Database.WithContext(dbCtx).Model(&models.Post{}).Preload("Media").Find(&post, "id = ?", c.Params("postId")).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}, err))
 	}
 	if post.Id == "" { // Id field is empty => post does not exist
@@ -150,8 +156,10 @@ func GetPost(c *fiber.Ctx) error {
 	// At this point, we know post.IsArchived is false so post.ForSubscribersOnly must be true
 
 	// Check if request user is subscribed to post owner
+	dbCtx2, dbCancel2 := configs.NewQueryContext()
+	defer dbCancel2()
 	var subscriberObj models.ProfileSubscriber
-	if err := configs.Database.Table("profile_subscribers").Find(&subscriberObj, "profile_id = ? AND subscriber_id = ?", post.ProfileId, reqProfile.Id).Error; err != nil {
+	if err := configs.Database.WithContext(dbCtx2).Table("profile_subscribers").Find(&subscriberObj, "profile_id = ? AND subscriber_id = ?", post.ProfileId, reqProfile.Id).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}, err))
 	}
 	if subscriberObj.ProfileId != "" && subscriberObj.SubscriberId != "" { // if both fields are populated, request user is subscribed to post owner
@@ -192,7 +200,9 @@ func EditPost(c *fiber.Ctx) error {
 	// Update the fields
 	var base = models.Base{Id: c.Params("postId")}
 	var post = models.Post{Base: base, ProfileId: reqProfile.Id}
-	if err := configs.Database.Model(&post).Updates(map[string]interface{}{"title": reqBody.Title, "caption": reqBody.Caption, "is_archived": *reqBody.IsArchived}).Error; err != nil {
+	dbCtx, dbCancel := configs.NewQueryContext()
+	defer dbCancel()
+	if err := configs.Database.WithContext(dbCtx).Model(&post).Updates(map[string]interface{}{"title": reqBody.Title, "caption": reqBody.Caption, "is_archived": *reqBody.IsArchived}).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}, err))
 	}
 
@@ -203,7 +213,9 @@ func DeletePost(c *fiber.Ctx) error {
 	var reqProfile models.Profile = c.Locals("profile").(models.Profile)
 
 	var post models.Post
-	if err := configs.Database.Model(&models.Post{}).Delete(&post, "id = ? AND profile_id = ?", c.Params("postId"), reqProfile.Id).Error; err != nil {
+	dbCtx, dbCancel := configs.NewQueryContext()
+	defer dbCancel()
+	if err := configs.Database.WithContext(dbCtx).Model(&models.Post{}).Delete(&post, "id = ? AND profile_id = ?", c.Params("postId"), reqProfile.Id).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}, err))
 	}
 
