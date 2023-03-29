@@ -23,7 +23,9 @@ func FollowAUser(c *fiber.Ctx) error {
 		FollowerId: reqProfile.Id,
 		CreatedAt:  time.Now(),
 	}
-	if err := configs.Database.Table("profile_followers").Where("profile_id = ? AND follower_id = ?", c.Params("profileId"), reqProfile.Id).FirstOrCreate(&newFollowerObj).Error; err != nil {
+	dbCtx, dbCancel := configs.NewQueryContext()
+	defer dbCancel()
+	if err := configs.Database.WithContext(dbCtx).Table("profile_followers").Where("profile_id = ? AND follower_id = ?", c.Params("profileId"), reqProfile.Id).FirstOrCreate(&newFollowerObj).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}, err))
 	}
 
@@ -38,8 +40,10 @@ func UnfollowAUser(c *fiber.Ctx) error {
 	}
 
 	// Delete followers object
+	dbCtx, dbCancel := configs.NewQueryContext()
+	defer dbCancel()
 	var followerObj models.ProfileFollower
-	if err := configs.Database.Table("profile_followers").Delete(&followerObj, "profile_id = ? AND follower_id = ?", c.Params("profileId"), reqProfile.Id).Error; err != nil {
+	if err := configs.Database.WithContext(dbCtx).Table("profile_followers").Delete(&followerObj, "profile_id = ? AND follower_id = ?", c.Params("profileId"), reqProfile.Id).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}, err))
 	}
 
@@ -54,8 +58,10 @@ func RemoveAFollower(c *fiber.Ctx) error {
 	}
 
 	// Delete followers object
+	dbCtx, dbCancel := configs.NewQueryContext()
+	defer dbCancel()
 	var followerObj models.ProfileFollower
-	if err := configs.Database.Table("profile_followers").Delete(&followerObj, "profile_id = ? AND follower_id = ?", reqProfile.Id, c.Params("profileId")).Error; err != nil {
+	if err := configs.Database.WithContext(dbCtx).Table("profile_followers").Delete(&followerObj, "profile_id = ? AND follower_id = ?", reqProfile.Id, c.Params("profileId")).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}, err))
 	}
 
@@ -68,14 +74,18 @@ func GetFollowers(c *fiber.Ctx) error {
 	var offset int = c.Locals("offset").(int)
 
 	// Get followers(paginated)
+	dbCtx, dbCancel := configs.NewQueryContext()
+	defer dbCancel()
 	regexMatch := fmt.Sprintf("%s%%", c.Query("filter")) // for more information on regex matching in sql, visit https://www.freecodecamp.org/news/sql-contains-string-sql-regex-example-query/
 	var followers []models.MiniProfile
-	if err := configs.Database.Model(&models.Profile{Base: models.Base{Id: c.Params("profileId")}}).Offset(offset).Limit(limit).Order("profile_followers.created_at DESC").Where("username LIKE ? OR name LIKE ?", regexMatch, regexMatch).Association("Followers").Find(&followers); err != nil {
+	if err := configs.Database.WithContext(dbCtx).Model(&models.Profile{Base: models.Base{Id: c.Params("profileId")}}).Offset(offset).Limit(limit).Order("profile_followers.created_at DESC").Where("username LIKE ? OR name LIKE ?", regexMatch, regexMatch).Association("Followers").Find(&followers); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}, err))
 	}
 
 	// Get total number of followers
-	numFollowers := configs.Database.Model(&models.Profile{Base: models.Base{Id: c.Params("profileId")}}).Where("username LIKE ? OR name LIKE ?", regexMatch, regexMatch).Association("Followers").Count()
+	dbCtx2, dbCancel2 := configs.NewQueryContext()
+	defer dbCancel2()
+	numFollowers := configs.Database.WithContext(dbCtx2).Model(&models.Profile{Base: models.Base{Id: c.Params("profileId")}}).Where("username LIKE ? OR name LIKE ?", regexMatch, regexMatch).Association("Followers").Count()
 
 	return c.Status(fiber.StatusOK).JSON(responses.NewSuccessResponse(fiber.StatusOK, &fiber.Map{
 		"data": &fiber.Map{
@@ -92,9 +102,6 @@ func GetFollowing(c *fiber.Ctx) error {
 	var limit int = c.Locals("limit").(int)
 	var offset int = c.Locals("offset").(int)
 
-	ctx, cancel := configs.NewQueryContext()
-	defer cancel()
-
 	/*
 	   IMPORTANT:
 	      To build the raw queries below, I used the default gorm logger in Info mode to inspect the queries made by the GetFollowers endpoint when gettings the followers list and numfollowers.
@@ -104,17 +111,21 @@ func GetFollowing(c *fiber.Ctx) error {
 	regexMatch := fmt.Sprintf("%s%%", c.Query("filter")) // for more information on regex matching in sql, visit https://www.freecodecamp.org/news/sql-contains-string-sql-regex-example-query/
 	query := configs.Database.Table("profiles").
 		Joins("JOIN profile_followers ON profile_followers.follower_id = ? AND profile_followers.profile_id = profiles.id", c.Params("profileId")).
-		Where("username LIKE ? OR name LIKE ?", regexMatch, regexMatch).WithContext(ctx)
+		Where("username LIKE ? OR name LIKE ?", regexMatch, regexMatch)
 
-	// Get following(paginated)
+		// Get following(paginated)
+	dbCtx, dbCancel := configs.NewQueryContext()
+	defer dbCancel()
 	var following = []models.MiniProfile{}
-	if err := query.Order("profile_followers.created_at DESC").Limit(limit).Offset(offset).Scan(&following).Error; err != nil {
+	if err := query.WithContext(dbCtx).Order("profile_followers.created_at DESC").Limit(limit).Offset(offset).Scan(&following).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}, err))
 	}
 
 	// Get total number of following
+	dbCtx2, dbCancel2 := configs.NewQueryContext()
+	defer dbCancel2()
 	var numFollowing int64
-	if err := query.Count(&numFollowing).Error; err != nil {
+	if err := query.WithContext(dbCtx2).Count(&numFollowing).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}, err))
 	}
 

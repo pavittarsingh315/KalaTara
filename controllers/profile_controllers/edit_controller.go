@@ -41,7 +41,9 @@ func EditUsername(c *fiber.Ctx) error {
 	}
 
 	// Update username
-	if err := configs.Database.Model(&reqProfile).Update("username", reqBody.Username).Error; err != nil {
+	dbCtx, dbCancel := configs.NewQueryContext()
+	defer dbCancel()
+	if err := configs.Database.WithContext(dbCtx).Model(&reqProfile).Update("username", reqBody.Username).Error; err != nil {
 		if err.Error() == "duplicated key not allowed" {
 			return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": "Username is taken."}, nil))
 		} else {
@@ -85,7 +87,9 @@ func EditName(c *fiber.Ctx) error {
 	}
 
 	// Update name
-	if err := configs.Database.Model(&reqProfile).Update("name", reqBody.Name).Error; err != nil {
+	dbCtx, dbCancel := configs.NewQueryContext()
+	defer dbCancel()
+	if err := configs.Database.WithContext(dbCtx).Model(&reqProfile).Update("name", reqBody.Name).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}, err))
 	}
 
@@ -128,7 +132,9 @@ func EditBio(c *fiber.Ctx) error {
 	}
 
 	// Update bio
-	if err := configs.Database.Model(&reqProfile).Update("bio", reqBody.Bio).Error; err != nil {
+	dbCtx, dbCancel := configs.NewQueryContext()
+	defer dbCancel()
+	if err := configs.Database.WithContext(dbCtx).Model(&reqProfile).Update("bio", reqBody.Bio).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}, err))
 	}
 

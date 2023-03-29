@@ -27,9 +27,13 @@ func AddToSearchHistory(c *fiber.Ctx) error {
 	reqBody.Query = strings.TrimSpace(reqBody.Query) // remove leading and trailing whitespace
 
 	// Get length of history
-	historyLength := configs.Database.Model(&reqProfile).Association("SearchHistory").Count()
+	dbCtx, dbCancel := configs.NewQueryContext()
+	defer dbCancel()
+	historyLength := configs.Database.WithContext(dbCtx).Model(&reqProfile).Association("SearchHistory").Count()
 	if historyLength > 20 { // delete bottom 8
-		if err := configs.Database.Model(&models.SearchHistory{}).Limit(8).Order("created_at ASC").Delete(&models.SearchHistory{}, "profile_id = ?", reqProfile.Id).Error; err != nil {
+		dbCtx, dbCancel := configs.NewQueryContext()
+		defer dbCancel()
+		if err := configs.Database.WithContext(dbCtx).Model(&models.SearchHistory{}).Limit(8).Order("created_at ASC").Delete(&models.SearchHistory{}, "profile_id = ?", reqProfile.Id).Error; err != nil {
 			return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}, err))
 		}
 	}
@@ -38,7 +42,9 @@ func AddToSearchHistory(c *fiber.Ctx) error {
 		ProfileId: reqProfile.Id,
 		Query:     reqBody.Query,
 	}
-	if err := configs.Database.Table("search_histories").Create(&newHistoryObj).Error; err != nil {
+	dbCtx2, dbCancel2 := configs.NewQueryContext()
+	defer dbCancel2()
+	if err := configs.Database.WithContext(dbCtx2).Table("search_histories").Create(&newHistoryObj).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}, err))
 	}
 
@@ -49,8 +55,10 @@ func RemoveFromSearchHistory(c *fiber.Ctx) error {
 	var reqProfile models.Profile = c.Locals("profile").(models.Profile)
 
 	// Delete the object
+	dbCtx, dbCancel := configs.NewQueryContext()
+	defer dbCancel()
 	var historyObj models.SearchHistory
-	if err := configs.Database.Table("search_histories").Delete(&historyObj, "profile_id = ? AND id = ?", reqProfile.Id, c.Params("searchHistoryId")).Error; err != nil {
+	if err := configs.Database.WithContext(dbCtx).Table("search_histories").Delete(&historyObj, "profile_id = ? AND id = ?", reqProfile.Id, c.Params("searchHistoryId")).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}, err))
 	}
 
@@ -61,8 +69,10 @@ func ClearSearchHistory(c *fiber.Ctx) error {
 	var reqProfile models.Profile = c.Locals("profile").(models.Profile)
 
 	// Clear associated SearchHistory objects
+	dbCtx, dbCancel := configs.NewQueryContext()
+	defer dbCancel()
 	var historyObj models.SearchHistory
-	if err := configs.Database.Table("search_histories").Delete(&historyObj, "profile_id = ?", reqProfile.Id).Error; err != nil {
+	if err := configs.Database.WithContext(dbCtx).Table("search_histories").Delete(&historyObj, "profile_id = ?", reqProfile.Id).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}, err))
 	}
 
@@ -73,8 +83,10 @@ func GetSearchHistory(c *fiber.Ctx) error {
 	var reqProfile models.Profile = c.Locals("profile").(models.Profile)
 
 	// Find associated SearchHistory objects
+	dbCtx, dbCancel := configs.NewQueryContext()
+	defer dbCancel()
 	var history []models.SearchHistory
-	if err := configs.Database.Model(&reqProfile).Order("search_histories.created_at DESC").Association("SearchHistory").Find(&history); err != nil {
+	if err := configs.Database.WithContext(dbCtx).Model(&reqProfile).Order("search_histories.created_at DESC").Association("SearchHistory").Find(&history); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}, err))
 	}
 
