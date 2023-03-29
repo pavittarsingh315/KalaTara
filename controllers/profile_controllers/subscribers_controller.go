@@ -189,14 +189,14 @@ func GetSubscribers(c *fiber.Ctx) error {
 	defer dbCancel()
 	regexMatch := fmt.Sprintf("%s%%", c.Query("filter")) // for more information on regex matching in sql, visit https://www.freecodecamp.org/news/sql-contains-string-sql-regex-example-query/
 	var subscribers = []models.MiniProfile{}
-	if err := configs.Database.WithContext(dbCtx).Model(&reqProfile).Offset(offset).Limit(limit).Order("profile_subscribers.created_at DESC").Where("is_accepted = ?", true).Where("username LIKE ? OR name LIKE ?", regexMatch, regexMatch).Association("Subscribers").Find(&subscribers); err != nil {
+	if err := configs.Database.WithContext(dbCtx).Model(&reqProfile).Offset(offset).Limit(limit).Order("profile_subscribers.created_at DESC").Where("is_accepted = ?", true).Where("username LIKE ?", regexMatch).Association("Subscribers").Find(&subscribers); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}, err))
 	}
 
 	// Get total number of subscribers
 	dbCtx2, dbCancel2 := configs.NewQueryContext()
 	defer dbCancel2()
-	numSubscribers := configs.Database.WithContext(dbCtx2).Model(&reqProfile).Where("is_accepted = ?", true).Where("username LIKE ? OR name LIKE ?", regexMatch, regexMatch).Association("Subscribers").Count()
+	numSubscribers := configs.Database.WithContext(dbCtx2).Model(&reqProfile).Where("is_accepted = ?", true).Where("username LIKE ?", regexMatch).Association("Subscribers").Count()
 
 	return c.Status(fiber.StatusOK).JSON(responses.NewSuccessResponse(fiber.StatusOK, &fiber.Map{
 		"data": &fiber.Map{
@@ -220,22 +220,25 @@ func GetSubscriptions(c *fiber.Ctx) error {
 	      I then used those queries and altered them to build the queries seen below.
 	*/
 
-	// Get subscriptions(paginated)
 	regexMatch := fmt.Sprintf("%s%%", c.Query("filter")) // for more information on regex matching in sql, visit https://www.freecodecamp.org/news/sql-contains-string-sql-regex-example-query/
-	query := fmt.Sprintf("SELECT profiles.id, profiles.created_at, profiles.updated_at, profiles.user_id, profiles.username, profiles.name, profiles.bio, profiles.avatar, profiles.mini_avatar, profiles.birthday FROM profiles JOIN profile_subscribers ON profile_subscribers.subscriber_id = \"%s\" AND profile_subscribers.profile_id = profiles.id WHERE is_accepted = %d AND (username LIKE \"%s\" OR name LIKE \"%s\") ORDER BY profile_subscribers.created_at DESC LIMIT %d OFFSET %d", reqProfile.Id, 1, regexMatch, regexMatch, limit, offset)
-	var subscriptions = []models.MiniProfile{}
+	query := configs.Database.Table("profiles").
+		Joins("JOIN profile_subscribers ON profile_subscribers.subscriber_id = ? AND profile_subscribers.profile_id = profiles.id", reqProfile.Id).
+		Where("is_accepted = ?", true).
+		Where("username LIKE ?", regexMatch)
+
+	// Get subscriptions(paginated)
 	dbCtx, dbCancel := configs.NewQueryContext()
 	defer dbCancel()
-	if err := configs.Database.WithContext(dbCtx).Raw(query).Scan(&subscriptions).Error; err != nil {
+	var subscriptions = []models.MiniProfile{}
+	if err := query.WithContext(dbCtx).Order("profile_subscribers.created_at DESC").Limit(limit).Offset(offset).Scan(&subscriptions).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}, err))
 	}
 
 	// Get total number of subscriptions
-	var numSubscriptions int
 	dbCtx2, dbCancel2 := configs.NewQueryContext()
 	defer dbCancel2()
-	query2 := fmt.Sprintf("SELECT count(*) FROM profiles JOIN profile_subscribers ON profile_subscribers.subscriber_id = \"%s\" AND profile_subscribers.profile_id = profiles.id WHERE is_accepted = %d AND (username LIKE \"%s\" OR name LIKE \"%s\")", reqProfile.Id, 1, regexMatch, regexMatch)
-	if err := configs.Database.WithContext(dbCtx2).Raw(query2).Scan(&numSubscriptions).Error; err != nil {
+	var numSubscriptions int64
+	if err := query.WithContext(dbCtx2).Count(&numSubscriptions).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}, err))
 	}
 
@@ -260,23 +263,24 @@ func GetInvitesSent(c *fiber.Ctx) error {
 	      To build the raw queries below, I used the raw query from the GetSubscriptions endpoint made a few changes
 	*/
 
-	// Get invites sent(paginated)
 	regexMatch := fmt.Sprintf("%s%%", c.Query("filter")) // for more information on regex matching in sql, visit https://www.freecodecamp.org/news/sql-contains-string-sql-regex-example-query/
-	query := fmt.Sprintf("SELECT profiles.id, profiles.created_at, profiles.updated_at, profiles.user_id, profiles.username, profiles.name, profiles.bio, profiles.avatar, profiles.mini_avatar, profiles.birthday FROM profiles JOIN profile_subscribers ON profile_subscribers.subscriber_id = profiles.id AND profile_subscribers.profile_id = \"%s\" WHERE is_accepted = %d AND is_invite = %d AND (username LIKE \"%s\" OR name LIKE \"%s\") ORDER BY profile_subscribers.created_at DESC LIMIT %d OFFSET %d", reqProfile.Id, 0, 1, regexMatch, regexMatch, limit, offset)
-	var invitesSent = []models.MiniProfile{}
+	query := configs.Database.Table("profiles").
+		Joins("JOIN profile_subscribers ON profile_subscribers.subscriber_id = profiles.id AND profile_subscribers.profile_id = ?", reqProfile.Id).
+		Where("is_accepted = ? AND is_invite = ? AND username LIKE ?", false, true, regexMatch)
+
+	// Get invites sent(paginated)
 	dbCtx, dbCancel := configs.NewQueryContext()
 	defer dbCancel()
-	if err := configs.Database.WithContext(dbCtx).Raw(query).Scan(&invitesSent).Error; err != nil {
+	var invitesSent = []models.MiniProfile{}
+	if err := query.WithContext(dbCtx).Order("profile_subscribers.created_at DESC").Limit(limit).Offset(offset).Scan(&invitesSent).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}, err))
 	}
 
 	// Get total number of invites sent
-	// SELECT count(*) FROM profiles JOIN profile_subscribers ON profile_subscribers.subscriber_id = \"%s\" AND profile_subscribers.profile_id = profiles.id WHERE is_accepted = %d AND (username LIKE \"%s\" OR name LIKE \"%s\")
-	var numInvitesSent int
 	dbCtx2, dbCancel2 := configs.NewQueryContext()
 	defer dbCancel2()
-	query2 := fmt.Sprintf("SELECT count(*) FROM profiles JOIN profile_subscribers ON profile_subscribers.subscriber_id = profiles.id AND profile_subscribers.profile_id = \"%s\" WHERE is_accepted = %d AND is_invite = %d AND (username LIKE \"%s\" OR name LIKE \"%s\")", reqProfile.Id, 0, 1, regexMatch, regexMatch)
-	if err := configs.Database.WithContext(dbCtx2).Raw(query2).Scan(&numInvitesSent).Error; err != nil {
+	var numInvitesSent int64
+	if err := query.WithContext(dbCtx2).Count(&numInvitesSent).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}, err))
 	}
 
@@ -301,22 +305,24 @@ func GetInvitesReceived(c *fiber.Ctx) error {
 	      To build the raw queries below, I used the raw query from the GetSubscriptions endpoint made a few changes
 	*/
 
-	// Get invites sent(paginated)
 	regexMatch := fmt.Sprintf("%s%%", c.Query("filter")) // for more information on regex matching in sql, visit https://www.freecodecamp.org/news/sql-contains-string-sql-regex-example-query/
-	query := fmt.Sprintf("SELECT profiles.id, profiles.created_at, profiles.updated_at, profiles.user_id, profiles.username, profiles.name, profiles.bio, profiles.avatar, profiles.mini_avatar, profiles.birthday FROM profiles JOIN profile_subscribers ON profile_subscribers.subscriber_id = \"%s\" AND profile_subscribers.profile_id = profiles.id WHERE is_accepted = %d AND is_invite = %d AND (username LIKE \"%s\" OR name LIKE \"%s\") ORDER BY profile_subscribers.created_at DESC LIMIT %d OFFSET %d", reqProfile.Id, 0, 1, regexMatch, regexMatch, limit, offset)
-	var invitesReceived = []models.MiniProfile{}
+	query := configs.Database.Table("profiles").
+		Joins("JOIN profile_subscribers ON profile_subscribers.subscriber_id = ? AND profile_subscribers.profile_id = profiles.id", reqProfile.Id).
+		Where("is_accepted = ? AND is_invite = ? AND username LIKE ?", false, true, regexMatch)
+
+	// Get invites sent(paginated)
 	dbCtx, dbCancel := configs.NewQueryContext()
 	defer dbCancel()
-	if err := configs.Database.WithContext(dbCtx).Raw(query).Scan(&invitesReceived).Error; err != nil {
+	var invitesReceived = []models.MiniProfile{}
+	if err := query.WithContext(dbCtx).Order("profile_subscribers.created_at DESC").Limit(limit).Offset(offset).Scan(&invitesReceived).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}, err))
 	}
 
 	// Get total number of invites received
-	var numInvitesReceived int
 	dbCtx2, dbCancel2 := configs.NewQueryContext()
 	defer dbCancel2()
-	query2 := fmt.Sprintf("SELECT count(*) FROM profiles JOIN profile_subscribers ON profile_subscribers.subscriber_id = \"%s\" AND profile_subscribers.profile_id = profiles.id WHERE is_accepted = %d AND is_invite = %d AND (username LIKE \"%s\" OR name LIKE \"%s\")", reqProfile.Id, 0, 1, regexMatch, regexMatch)
-	if err := configs.Database.WithContext(dbCtx2).Raw(query2).Scan(&numInvitesReceived).Error; err != nil {
+	var numInvitesReceived int64
+	if err := query.WithContext(dbCtx2).Count(&numInvitesReceived).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}, err))
 	}
 
@@ -341,22 +347,24 @@ func GetRequestsSent(c *fiber.Ctx) error {
 	      To build the raw queries below, I used the raw query from the GetSubscriptions endpoint made a few changes
 	*/
 
-	// Get requests sent(paginated)
 	regexMatch := fmt.Sprintf("%s%%", c.Query("filter")) // for more information on regex matching in sql, visit https://www.freecodecamp.org/news/sql-contains-string-sql-regex-example-query/
-	query := fmt.Sprintf("SELECT profiles.id, profiles.created_at, profiles.updated_at, profiles.user_id, profiles.username, profiles.name, profiles.bio, profiles.avatar, profiles.mini_avatar, profiles.birthday FROM profiles JOIN profile_subscribers ON profile_subscribers.subscriber_id = \"%s\" AND profile_subscribers.profile_id = profiles.id WHERE is_accepted = %d AND is_request = %d AND (username LIKE \"%s\" OR name LIKE \"%s\") ORDER BY profile_subscribers.created_at DESC LIMIT %d OFFSET %d", reqProfile.Id, 0, 1, regexMatch, regexMatch, limit, offset)
-	var requestsSent = []models.MiniProfile{}
+	query := configs.Database.Table("profiles").
+		Joins("JOIN profile_subscribers ON profile_subscribers.subscriber_id = ? AND profile_subscribers.profile_id = profiles.id", reqProfile.Id).
+		Where("is_accepted = ? AND is_request = ? AND username LIKE ?", false, true, regexMatch)
+
+	// Get requests sent(paginated)
 	dbCtx, dbCancel := configs.NewQueryContext()
 	defer dbCancel()
-	if err := configs.Database.WithContext(dbCtx).Raw(query).Scan(&requestsSent).Error; err != nil {
+	var requestsSent = []models.MiniProfile{}
+	if err := query.WithContext(dbCtx).Order("profile_subscribers.created_at DESC").Limit(limit).Offset(offset).Scan(&requestsSent).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}, err))
 	}
 
 	// Get total number of requests sent
-	var numRequestsSent int
 	dbCtx2, dbCancel2 := configs.NewQueryContext()
 	defer dbCancel2()
-	query2 := fmt.Sprintf("SELECT count(*) FROM profiles JOIN profile_subscribers ON profile_subscribers.subscriber_id = \"%s\" AND profile_subscribers.profile_id = profiles.id WHERE is_accepted = %d AND is_request = %d AND (username LIKE \"%s\" OR name LIKE \"%s\")", reqProfile.Id, 0, 1, regexMatch, regexMatch)
-	if err := configs.Database.WithContext(dbCtx2).Raw(query2).Scan(&numRequestsSent).Error; err != nil {
+	var numRequestsSent int64
+	if err := query.WithContext(dbCtx2).Count(&numRequestsSent).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}, err))
 	}
 
@@ -381,22 +389,24 @@ func GetRequestsReceived(c *fiber.Ctx) error {
 	      To build the raw queries below, I used the raw query from the GetSubscriptions endpoint made a few changes
 	*/
 
-	// Get requests sent(paginated)
 	regexMatch := fmt.Sprintf("%s%%", c.Query("filter")) // for more information on regex matching in sql, visit https://www.freecodecamp.org/news/sql-contains-string-sql-regex-example-query/
-	query := fmt.Sprintf("SELECT profiles.id, profiles.created_at, profiles.updated_at, profiles.user_id, profiles.username, profiles.name, profiles.bio, profiles.avatar, profiles.mini_avatar, profiles.birthday FROM profiles JOIN profile_subscribers ON profile_subscribers.subscriber_id = profiles.id AND profile_subscribers.profile_id = \"%s\" WHERE is_accepted = %d AND is_request = %d AND (username LIKE \"%s\" OR name LIKE \"%s\") ORDER BY profile_subscribers.created_at DESC LIMIT %d OFFSET %d", reqProfile.Id, 0, 1, regexMatch, regexMatch, limit, offset)
-	var requestsReceived = []models.MiniProfile{}
+	query := configs.Database.Table("profiles").
+		Joins("JOIN profile_subscribers ON profile_subscribers.profile_id = ? AND profile_subscribers.subscriber_id = profiles.id", reqProfile.Id).
+		Where("is_accepted = ? AND is_request = ? AND username LIKE ?", false, true, regexMatch)
+
+	// Get requests sent(paginated)
 	dbCtx, dbCancel := configs.NewQueryContext()
 	defer dbCancel()
-	if err := configs.Database.WithContext(dbCtx).Raw(query).Scan(&requestsReceived).Error; err != nil {
+	var requestsReceived = []models.MiniProfile{}
+	if err := query.WithContext(dbCtx).Order("profile_subscribers.created_at DESC").Limit(limit).Offset(offset).Scan(&requestsReceived).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}, err))
 	}
 
 	// Get total number of requests sent
-	var numRequestsReceived int
 	dbCtx2, dbCancel2 := configs.NewQueryContext()
 	defer dbCancel2()
-	query2 := fmt.Sprintf("SELECT count(*) FROM profiles JOIN profile_subscribers ON profile_subscribers.subscriber_id = profiles.id AND profile_subscribers.profile_id = \"%s\" WHERE is_accepted = %d AND is_request = %d AND (username LIKE \"%s\" OR name LIKE \"%s\")", reqProfile.Id, 0, 1, regexMatch, regexMatch)
-	if err := configs.Database.WithContext(dbCtx2).Raw(query2).Scan(&numRequestsReceived).Error; err != nil {
+	var numRequestsReceived int64
+	if err := query.WithContext(dbCtx2).Count(&numRequestsReceived).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}, err))
 	}
 
