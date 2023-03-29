@@ -20,12 +20,12 @@ func RequestPasswordReset(c *fiber.Ctx) error {
 	}{}
 
 	if err := c.BodyParser(&reqBody); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": "Bad request..."}))
+		return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": "Bad request..."}, err))
 	}
 
 	// Check if all fields are included
 	if reqBody.Contact == "" {
-		return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": "Please include all fields."}))
+		return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": "Please include all fields."}, nil))
 	}
 
 	reqBody.Contact = strings.ToLower(strings.ReplaceAll(reqBody.Contact, " ", "")) // remove all whitespace and make lowercase
@@ -35,10 +35,10 @@ func RequestPasswordReset(c *fiber.Ctx) error {
 	defer dbCancel()
 	var user models.User
 	if err := configs.Database.WithContext(dbCtx).Model(&models.User{}).Find(&user, "contact = ?", reqBody.Contact).Error; err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
+		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}, err))
 	}
 	if user.Contact == "" { // contact field is empty => user with contact doesn't exist
-		return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": "Account not found."}))
+		return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": "Account not found."}, nil))
 	}
 
 	// Check if reset is already initiated
@@ -51,9 +51,9 @@ func RequestPasswordReset(c *fiber.Ctx) error {
 		defer cacheCancel()
 		dur, _ := cache.ExpiresIn(cacheCtx, key)
 		message := fmt.Sprintf("Try again in %s.", utils.SecondsToString(int64(dur.Seconds())))
-		return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": message}))
+		return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": message}, nil))
 	} else if err != redis.Nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
+		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}, err))
 	}
 
 	// Create password reset code in cache
@@ -62,7 +62,7 @@ func RequestPasswordReset(c *fiber.Ctx) error {
 	var code = utils.GenerateRandomCode(6)
 	var exp = cache.PasswordResetCodeEXP
 	if err := cache.Set(cacheCtx2, key, utils.HashPassword(code), exp); err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
+		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}, err))
 	}
 
 	// Send Reset Code
@@ -83,12 +83,12 @@ func ConfirmResetCode(c *fiber.Ctx) error {
 	}{}
 
 	if err := c.BodyParser(&reqBody); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": "Bad request..."}))
+		return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": "Bad request..."}, err))
 	}
 
 	// Check if all fields are included
 	if reqBody.Contact == "" || reqBody.Code == "" {
-		return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": "Please include all fields."}))
+		return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": "Please include all fields."}, nil))
 	}
 
 	reqBody.Contact = strings.ToLower(strings.ReplaceAll(reqBody.Contact, " ", "")) // remove all whitespace and make lowercase
@@ -100,15 +100,15 @@ func ConfirmResetCode(c *fiber.Ctx) error {
 	var resetCode string
 	if err := cache.Get(cacheCtx, key, &resetCode); err != nil {
 		if err == redis.Nil {
-			return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": "Code has expired. Please restart the recovery process."}))
+			return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": "Code has expired. Please restart the recovery process."}, nil))
 		} else {
-			return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
+			return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}, err))
 		}
 	}
 
 	// Check if user provided code is correct
 	if !utils.VerifyPassword(resetCode, reqBody.Code) {
-		return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": "Incorrect Code."}))
+		return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": "Incorrect Code."}, nil))
 	}
 
 	return c.Status(fiber.StatusOK).JSON(responses.NewSuccessResponse(fiber.StatusOK, &fiber.Map{"data": "Code confirmed."}))
@@ -122,17 +122,17 @@ func ConfirmPasswordReset(c *fiber.Ctx) error {
 	}{}
 
 	if err := c.BodyParser(&reqBody); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": "Bad request..."}))
+		return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": "Bad request..."}, err))
 	}
 
 	// Check if all fields are included
 	if reqBody.Contact == "" || reqBody.Code == "" || reqBody.Password == "" {
-		return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": "Please include all fields."}))
+		return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": "Please include all fields."}, nil))
 	}
 
 	passwordLength := uniseg.GraphemeClusterCount(reqBody.Password)
 	if passwordLength < 10 {
-		return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": "Password too short."}))
+		return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": "Password too short."}, nil))
 	}
 
 	reqBody.Contact = strings.ToLower(strings.ReplaceAll(reqBody.Contact, " ", "")) // remove all whitespace and make lowercase
@@ -144,15 +144,15 @@ func ConfirmPasswordReset(c *fiber.Ctx) error {
 	var resetCode string
 	if err := cache.Get(cacheCtx, key, &resetCode); err != nil {
 		if err == redis.Nil {
-			return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": "Code has expired. Please restart the recovery process."}))
+			return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": "Code has expired. Please restart the recovery process."}, nil))
 		} else {
-			return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
+			return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}, err))
 		}
 	}
 
 	// Check if user provided code is correct
 	if !utils.VerifyPassword(resetCode, reqBody.Code) {
-		return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": "Incorrect Code."}))
+		return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": "Incorrect Code."}, nil))
 	}
 
 	// We know that a reset code is created after checking if the user with contact = reqBody.Contact exists.
@@ -162,7 +162,7 @@ func ConfirmPasswordReset(c *fiber.Ctx) error {
 	dbCtx, dbCancel := configs.NewQueryContext()
 	defer dbCancel()
 	if err := configs.Database.WithContext(dbCtx).Model(&models.User{}).Where("contact = ?", reqBody.Contact).Update("password", utils.HashPassword(reqBody.Password)).Error; err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
+		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}, err))
 	}
 
 	// Delete reset code from cache

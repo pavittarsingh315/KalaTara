@@ -18,12 +18,12 @@ func UserAuthHandler(c *fiber.Ctx) error {
 	errMessage := "Could not authorize action."
 
 	if err := c.ReqHeaderParser(&reqHeader); err != nil || reqHeader.Token == "" || reqHeader.UserId == "" {
-		return c.Status(fiber.StatusUnauthorized).JSON(responses.NewErrorResponse(fiber.StatusUnauthorized, &fiber.Map{"data": errMessage}))
+		return c.Status(fiber.StatusUnauthorized).JSON(responses.NewErrorResponse(fiber.StatusUnauthorized, &fiber.Map{"data": errMessage}, err))
 	}
 
 	_, accessBody, accessErr := utils.VerifyAccessTokenNoRefresh(reqHeader.Token) // will return err if expired
 	if accessErr != nil || accessBody.UserId != reqHeader.UserId {
-		return c.Status(fiber.StatusUnauthorized).JSON(responses.NewErrorResponse(fiber.StatusUnauthorized, &fiber.Map{"data": errMessage}))
+		return c.Status(fiber.StatusUnauthorized).JSON(responses.NewErrorResponse(fiber.StatusUnauthorized, &fiber.Map{"data": errMessage}, accessErr))
 	}
 
 	cacheCtx, cacheCancel := cache.NewCacheContext()
@@ -36,20 +36,20 @@ func UserAuthHandler(c *fiber.Ctx) error {
 			dbCtx, dbCancel := configs.NewQueryContext()
 			defer dbCancel()
 			if err := configs.Database.WithContext(dbCtx).Model(&models.Profile{}).Find(&profile, "user_id = ?", accessBody.UserId).Error; err != nil {
-				return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
+				return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}, err))
 			}
 			if profile.Id == "" { // Id field is empty => Account is not found
-				return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": "Account not found."}))
+				return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": "Account not found."}, nil))
 			}
 
 			// Cache profile
 			cacheCtx, cacheCancel := cache.NewCacheContext()
 			defer cacheCancel()
 			if err := cache.Set(cacheCtx, key, profile, exp); err != nil {
-				return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
+				return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}, err))
 			}
 		} else {
-			return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
+			return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}, err))
 		}
 	}
 

@@ -20,12 +20,12 @@ func Login(c *fiber.Ctx) error {
 	}{}
 
 	if err := c.BodyParser(&reqBody); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": "Bad request..."}))
+		return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": "Bad request..."}, err))
 	}
 
 	// Check if all fields are included
 	if reqBody.Contact == "" || reqBody.Password == "" {
-		return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": "Please include all fields."}))
+		return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": "Please include all fields."}, nil))
 	}
 
 	reqBody.Contact = strings.ToLower(strings.ReplaceAll(reqBody.Contact, " ", "")) // remove all whitespace and make lowercase
@@ -35,14 +35,14 @@ func Login(c *fiber.Ctx) error {
 	defer dbCancel()
 	var user models.User
 	if err := configs.Database.WithContext(dbCtx).Model(&models.User{}).Preload("Profile").Find(&user, "contact = ?", reqBody.Contact).Error; err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
+		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}, err))
 	}
 	if user.Contact == "" || user.Profile.Username == "" { // (contact field is empty => user doesn't exist || username field is empty => profile doesn't exist) => Account is not found
-		return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": "Account not found."}))
+		return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": "Account not found."}, nil))
 	}
 
 	if !utils.VerifyPassword(user.Password, reqBody.Password) { // password doesn't match
-		return c.Status(fiber.StatusUnauthorized).JSON(responses.NewErrorResponse(fiber.StatusUnauthorized, &fiber.Map{"data": "Incorrect Password."}))
+		return c.Status(fiber.StatusUnauthorized).JSON(responses.NewErrorResponse(fiber.StatusUnauthorized, &fiber.Map{"data": "Incorrect Password."}, nil))
 	}
 
 	// Check if user is banned
@@ -50,14 +50,14 @@ func Login(c *fiber.Ctx) error {
 	unixTimeBan := user.BanTill.Unix()
 	if unixTimeNow < unixTimeBan {
 		message := fmt.Sprintf("You are banned for %s.", utils.SecondsToString(unixTimeBan-unixTimeNow))
-		return c.Status(fiber.StatusUnauthorized).JSON(responses.NewErrorResponse(fiber.StatusUnauthorized, &fiber.Map{"data": message}))
+		return c.Status(fiber.StatusUnauthorized).JSON(responses.NewErrorResponse(fiber.StatusUnauthorized, &fiber.Map{"data": message}, nil))
 	}
 
 	// Update last login - because we preloaded the profile in the earlier query, we need to create a query on a "clean" user model so that a profile's username unique constraint isn't violated.
 	dbCtx2, dbCancel2 := configs.NewQueryContext()
 	defer dbCancel2()
 	if err := configs.Database.WithContext(dbCtx2).Model(&models.User{}).Where("id = ?", user.Id).Update("last_login", time.Now()).Error; err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
+		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}, err))
 	}
 
 	// Generate auth tokens
@@ -69,7 +69,7 @@ func Login(c *fiber.Ctx) error {
 	var key = cache.ProfileKey(user.Id)
 	var exp = cache.ProfileExp
 	if err := cache.Set(cacheCtx, key, user.Profile, exp); err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
+		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}, err))
 	}
 
 	return c.Status(fiber.StatusOK).JSON(
@@ -93,23 +93,27 @@ func TokenLogin(c *fiber.Ctx) error {
 	}{}
 
 	if err := c.BodyParser(&reqBody); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": "Bad request..."}))
+		return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": "Bad request..."}, err))
 	}
 
 	// Check if all fields are included
 	if reqBody.AccessToken == "" || reqBody.RefreshToken == "" {
-		return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": "Please include all fields."}))
+		return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": "Please include all fields."}, nil))
 	}
 
 	// Verify tokens
 	accessToken, accessBody, accessErr := utils.VerifyAccessToken(reqBody.AccessToken)
 	_, refreshBody, refreshErr := utils.VerifyRefreshToken(reqBody.RefreshToken)
 	if accessErr != nil || refreshErr != nil {
-		return c.Status(fiber.StatusUnauthorized).JSON(responses.NewErrorResponse(fiber.StatusUnauthorized, &fiber.Map{"data": "Authentication failed..."}))
+		err := accessErr
+		if accessErr == nil {
+			err = refreshErr
+		}
+		return c.Status(fiber.StatusUnauthorized).JSON(responses.NewErrorResponse(fiber.StatusUnauthorized, &fiber.Map{"data": "Authentication failed..."}, err))
 	}
 
 	if accessBody.UserId != refreshBody.UserId { // token pair are a mismatch
-		return c.Status(fiber.StatusUnauthorized).JSON(responses.NewErrorResponse(fiber.StatusUnauthorized, &fiber.Map{"data": "Authentication failed..."}))
+		return c.Status(fiber.StatusUnauthorized).JSON(responses.NewErrorResponse(fiber.StatusUnauthorized, &fiber.Map{"data": "Authentication failed..."}, nil))
 	}
 
 	// Update token in case verification process updated it
@@ -120,10 +124,10 @@ func TokenLogin(c *fiber.Ctx) error {
 	defer dbCancel()
 	var user models.User
 	if err := configs.Database.WithContext(dbCtx).Model(&models.User{}).Preload("Profile").Find(&user, "id = ?", accessBody.UserId).Error; err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
+		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}, err))
 	}
 	if user.Contact == "" || user.Profile.Username == "" { // (contact field is empty => user doesn't exist || username field is empty => profile doesn't exist) => Account is not found
-		return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": "Account not found."}))
+		return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": "Account not found."}, nil))
 	}
 
 	// Check if user is banned
@@ -131,14 +135,14 @@ func TokenLogin(c *fiber.Ctx) error {
 	unixTimeBan := user.BanTill.Unix()
 	if unixTimeNow < unixTimeBan {
 		message := fmt.Sprintf("You are banned for %s.", utils.SecondsToString(unixTimeBan-unixTimeNow))
-		return c.Status(fiber.StatusUnauthorized).JSON(responses.NewErrorResponse(fiber.StatusUnauthorized, &fiber.Map{"data": message}))
+		return c.Status(fiber.StatusUnauthorized).JSON(responses.NewErrorResponse(fiber.StatusUnauthorized, &fiber.Map{"data": message}, nil))
 	}
 
 	// Update last login - because we preloaded the profile in the earlier query, we need to create a query on a "clean" user model so that a profile's username unique constraint isn't violated.
 	dbCtx2, dbCancel2 := configs.NewQueryContext()
 	defer dbCancel2()
 	if err := configs.Database.WithContext(dbCtx2).Model(&models.User{}).Where("id = ?", user.Id).Update("last_login", time.Now()).Error; err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
+		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}, err))
 	}
 
 	// Cache profile
@@ -147,7 +151,7 @@ func TokenLogin(c *fiber.Ctx) error {
 	var key = cache.ProfileKey(user.Id)
 	var exp = cache.ProfileExp
 	if err := cache.Set(cacheCtx, key, user.Profile, exp); err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
+		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}, err))
 	}
 
 	return c.Status(fiber.StatusOK).JSON(

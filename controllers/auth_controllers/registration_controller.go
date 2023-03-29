@@ -25,12 +25,12 @@ func InitiateRegistration(c *fiber.Ctx) error {
 	}{}
 
 	if err := c.BodyParser(&reqBody); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": "Bad request..."}))
+		return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": "Bad request..."}, err))
 	}
 
 	// Check if all fields are included
 	if reqBody.Contact == "" || reqBody.Username == "" || reqBody.Name == "" || reqBody.Password == "" || reqBody.Birthday.IsZero() {
-		return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": "Please include all fields."}))
+		return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": "Please include all fields."}, nil))
 	}
 
 	reqBody.Name = strings.TrimSpace(reqBody.Name)                                    // remove leading and trailing whitespace
@@ -43,19 +43,19 @@ func InitiateRegistration(c *fiber.Ctx) error {
 	contactLength := uniseg.GraphemeClusterCount(reqBody.Contact)
 	passwordLength := uniseg.GraphemeClusterCount(reqBody.Password)
 	if usernameLength < 6 {
-		return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": "Username is too short."}))
+		return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": "Username is too short."}, nil))
 	}
 	if usernameLength > 30 {
-		return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": "Username is too long."}))
+		return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": "Username is too long."}, nil))
 	}
 	if nameLength > 30 {
-		return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": "Name is too long."}))
+		return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": "Name is too long."}, nil))
 	}
 	if contactLength > 50 {
-		return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": "Contact is too long."}))
+		return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": "Contact is too long."}, nil))
 	}
 	if passwordLength < 10 {
-		return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": "Password is too short."}))
+		return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": "Password is too short."}, nil))
 	}
 
 	// Check if username is taken
@@ -63,10 +63,10 @@ func InitiateRegistration(c *fiber.Ctx) error {
 	defer dbCancel()
 	var profile models.Profile
 	if err := configs.Database.WithContext(dbCtx).Model(&models.Profile{}).Find(&profile, "username = ?", reqBody.Username).Error; err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
+		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}, err))
 	}
 	if profile.Username != "" { // username field is not empty => profile with username exists
-		return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": "Username is taken."}))
+		return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": "Username is taken."}, nil))
 	}
 
 	// Check if contact is taken
@@ -75,14 +75,14 @@ func InitiateRegistration(c *fiber.Ctx) error {
 	contactIsEmail := utils.ValidateEmail(reqBody.Contact)
 	var user models.User
 	if err := configs.Database.WithContext(dbCtx2).Model(&models.User{}).Find(&user, "contact = ?", reqBody.Contact).Error; err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
+		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}, err))
 	}
 	if user.Contact != "" { // contact field is not empty => user with contact exists
 		errorMsg := "Contact already in use."
 		if contactIsEmail {
 			errorMsg = "Email address already in use."
 		}
-		return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": errorMsg}))
+		return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": errorMsg}, nil))
 	}
 
 	// Check if registration is already initiated
@@ -95,9 +95,9 @@ func InitiateRegistration(c *fiber.Ctx) error {
 		defer cacheCancel()
 		dur, _ := cache.ExpiresIn(cacheCtx, key)
 		message := fmt.Sprintf("Try again in %s.", utils.SecondsToString(int64(dur.Seconds())))
-		return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": message}))
+		return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": message}, nil))
 	} else if err != redis.Nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
+		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}, err))
 	}
 
 	// Create new user confirm code in cache
@@ -106,7 +106,7 @@ func InitiateRegistration(c *fiber.Ctx) error {
 	var code = utils.GenerateRandomCode(6)
 	var exp = cache.NewUserConfirmCodeExp
 	if err := cache.Set(cacheCtx2, key, utils.HashPassword(code), exp); err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
+		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}, err))
 	}
 
 	if contactIsEmail {
@@ -129,12 +129,12 @@ func FinalizeRegistration(c *fiber.Ctx) error {
 	}{}
 
 	if err := c.BodyParser(&reqBody); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": "Bad request..."}))
+		return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": "Bad request..."}, err))
 	}
 
 	// Check if all fields are included
 	if reqBody.Code == "" || reqBody.Contact == "" || reqBody.Username == "" || reqBody.Name == "" || reqBody.Password == "" || reqBody.Birthday.IsZero() {
-		return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": "Please include all fields."}))
+		return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": "Please include all fields."}, nil))
 	}
 
 	reqBody.Name = strings.TrimSpace(reqBody.Name)                                    // remove leading and trailing whitespace
@@ -147,19 +147,19 @@ func FinalizeRegistration(c *fiber.Ctx) error {
 	contactLength := uniseg.GraphemeClusterCount(reqBody.Contact)
 	passwordLength := uniseg.GraphemeClusterCount(reqBody.Password)
 	if usernameLength < 6 {
-		return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": "Username too short."}))
+		return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": "Username too short."}, nil))
 	}
 	if usernameLength > 30 {
-		return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": "Username too long."}))
+		return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": "Username too long."}, nil))
 	}
 	if nameLength > 30 {
-		return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": "Name too long."}))
+		return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": "Name too long."}, nil))
 	}
 	if contactLength > 50 {
-		return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": "Contact too long."}))
+		return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": "Contact too long."}, nil))
 	}
 	if passwordLength < 10 {
-		return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": "Password too short."}))
+		return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": "Password too short."}, nil))
 	}
 
 	// Check if username is taken
@@ -167,10 +167,10 @@ func FinalizeRegistration(c *fiber.Ctx) error {
 	defer dbCancel()
 	var profile models.Profile
 	if err := configs.Database.WithContext(dbCtx).Model(&models.Profile{}).Find(&profile, "username = ?", reqBody.Username).Error; err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
+		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}, err))
 	}
 	if profile.Username != "" { // username field is not empty => profile with username exists
-		return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": "Username is taken."}))
+		return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": "Username is taken."}, nil))
 	}
 
 	// Get confirmation code
@@ -180,15 +180,15 @@ func FinalizeRegistration(c *fiber.Ctx) error {
 	var confirmationCode string
 	if err := cache.Get(cacheCtx, key, &confirmationCode); err != nil {
 		if err == redis.Nil {
-			return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": "Code has expired. Please restart the registration process."}))
+			return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": "Code has expired. Please restart the registration process."}, nil))
 		} else {
-			return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
+			return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}, err))
 		}
 	}
 
 	// Check if user provided code is correct
 	if !utils.VerifyPassword(confirmationCode, reqBody.Code) {
-		return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": "Incorrect Code."}))
+		return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": "Incorrect Code."}, nil))
 	}
 
 	// Create User
@@ -205,7 +205,7 @@ func FinalizeRegistration(c *fiber.Ctx) error {
 	dbCtx2, dbCancel2 := configs.NewQueryContext()
 	defer dbCancel2()
 	if err := configs.Database.WithContext(dbCtx2).Model(&models.User{}).Create(&newUser).Error; err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
+		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}, err))
 	}
 
 	// Create Profile
@@ -221,7 +221,7 @@ func FinalizeRegistration(c *fiber.Ctx) error {
 	dbCtx3, dbCancel3 := configs.NewQueryContext()
 	defer dbCancel3()
 	if err := configs.Database.WithContext(dbCtx3).Model(&models.Profile{}).Create(&newProfile).Error; err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
+		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}, err))
 	}
 
 	// Delete confirmation code from cache
@@ -238,7 +238,7 @@ func FinalizeRegistration(c *fiber.Ctx) error {
 	key = cache.ProfileKey(newUser.Id)
 	var exp = cache.ProfileExp
 	if err := cache.Set(cacheCtx3, key, newProfile, exp); err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
+		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}, err))
 	}
 
 	return c.Status(fiber.StatusOK).JSON(

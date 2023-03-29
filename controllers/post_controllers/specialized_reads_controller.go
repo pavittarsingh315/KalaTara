@@ -40,7 +40,7 @@ func GetFollowingsFeed(c *fiber.Ctx) error {
 	)
 	var unpreparedFeedPosts = []postsWithoutMedia{}
 	if err := configs.Database.Raw(query).Scan(&unpreparedFeedPosts).Error; err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
+		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}, err))
 	}
 
 	var feedPosts = preparePosts(&unpreparedFeedPosts, false, false, false)
@@ -55,7 +55,7 @@ func GetFollowingsFeed(c *fiber.Ctx) error {
 		reqProfile.Id, 0, 0,
 	)
 	if err := configs.Database.Raw(query).Scan(&numFeedPosts).Error; err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
+		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}, err))
 	}
 
 	return c.Status(fiber.StatusOK).JSON(responses.NewSuccessResponse(fiber.StatusOK, &fiber.Map{
@@ -98,7 +98,7 @@ func GetSubscriptionsFeed(c *fiber.Ctx) error {
 	)
 	var unpreparedFeedPosts = []postsWithoutMedia{}
 	if err := configs.Database.Raw(query).Scan(&unpreparedFeedPosts).Error; err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
+		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}, err))
 	}
 
 	var feedPosts = preparePosts(&unpreparedFeedPosts, false, false, false)
@@ -113,7 +113,7 @@ func GetSubscriptionsFeed(c *fiber.Ctx) error {
 		reqProfile.Id, 0, 1,
 	)
 	if err := configs.Database.Raw(query).Scan(&numFeedPosts).Error; err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
+		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}, err))
 	}
 
 	return c.Status(fiber.StatusOK).JSON(responses.NewSuccessResponse(fiber.StatusOK, &fiber.Map{
@@ -155,7 +155,7 @@ func GetArchivedPosts(c *fiber.Ctx) error {
 	)
 	var unpreparedArchivedPosts = []postsWithoutMedia{}
 	if err := configs.Database.Raw(query).Scan(&unpreparedArchivedPosts).Error; err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
+		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}, err))
 	}
 
 	var archivedPosts = preparePosts(&unpreparedArchivedPosts, false, false, false)
@@ -202,7 +202,7 @@ func GetPublicPosts(c *fiber.Ctx) error {
 	)
 	var unpreparedPublicPosts = []postsWithoutMedia{}
 	if err := configs.Database.Raw(query).Scan(&unpreparedPublicPosts).Error; err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
+		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}, err))
 	}
 
 	var publicPosts = preparePosts(&unpreparedPublicPosts, false, false, false)
@@ -210,7 +210,7 @@ func GetPublicPosts(c *fiber.Ctx) error {
 	// Get total number of public posts
 	var numPublicPosts int64
 	if err := configs.Database.Model(&models.Post{}).Where("profile_id = ? AND is_archived = ? AND for_subscribers_only = ?", c.Params("profileId"), false, false).Count(&numPublicPosts).Error; err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
+		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}, err))
 	}
 
 	return c.Status(fiber.StatusOK).JSON(responses.NewSuccessResponse(fiber.StatusOK, &fiber.Map{
@@ -252,7 +252,7 @@ func GetExclusivePosts(c *fiber.Ctx) error {
 	)
 	var unpreparedExclusivePosts = []postsWithoutMedia{}
 	if err := configs.Database.Raw(query).Scan(&unpreparedExclusivePosts).Error; err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
+		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}, err))
 	}
 
 	var exclusivePosts = preparePosts(&unpreparedExclusivePosts, false, false, false)
@@ -260,7 +260,7 @@ func GetExclusivePosts(c *fiber.Ctx) error {
 	// Get total number of public posts
 	var numExclusivePosts int64
 	if err := configs.Database.Model(&models.Post{}).Where("profile_id = ? AND is_archived = ? AND for_subscribers_only = ?", c.Params("profileId"), false, true).Count(&numExclusivePosts).Error; err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}))
+		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}, err))
 	}
 
 	return c.Status(fiber.StatusOK).JSON(responses.NewSuccessResponse(fiber.StatusOK, &fiber.Map{

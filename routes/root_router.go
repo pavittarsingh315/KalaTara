@@ -35,6 +35,7 @@ func InitRouter(app *fiber.App, hub *ws.Hub) {
 				&fiber.Map{
 					"data": "404 not found.",
 				},
+				nil,
 			),
 		)
 	})
