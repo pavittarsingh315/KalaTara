@@ -42,7 +42,11 @@ func (h *Hub) Run() {
 		case cl := <-h.unregister:
 			cl.mu.Lock()
 			h.mu.Lock()
-			delete(h.clients[cl.Profile.UserId], cl.ConnectionId)
+			if len(h.clients[cl.Profile.UserId]) == 1 {
+				delete(h.clients, cl.Profile.UserId)
+			} else {
+				delete(h.clients[cl.Profile.UserId], cl.ConnectionId)
+			}
 			h.mu.Unlock()
 			close(cl.Message)
 			cl.mu.Unlock()
