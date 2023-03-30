@@ -103,7 +103,7 @@ func GetLikesOfPost(c *fiber.Ctx) error {
 	// Get likers(paginated)
 	dbCtx, dbCancel := configs.NewQueryContext()
 	defer dbCancel()
-	var postLikers = []models.MiniProfile{}
+	var postLikers = []responses.MiniProfile{}
 	if err := query.WithContext(dbCtx).Scan(&postLikers).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}, err))
 	}
@@ -138,7 +138,7 @@ func GetDislikesOfPost(c *fiber.Ctx) error {
 	// Get dislikers(paginated)
 	dbCtx, dbCancel := configs.NewQueryContext()
 	defer dbCancel()
-	var postDislikers = []models.MiniProfile{}
+	var postDislikers = []responses.MiniProfile{}
 	if err := query.WithContext(dbCtx).Scan(&postDislikers).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}, err))
 	}

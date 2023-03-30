@@ -188,7 +188,7 @@ func GetSubscribers(c *fiber.Ctx) error {
 	dbCtx, dbCancel := configs.NewQueryContext()
 	defer dbCancel()
 	regexMatch := fmt.Sprintf("%s%%", c.Query("filter")) // for more information on regex matching in sql, visit https://www.freecodecamp.org/news/sql-contains-string-sql-regex-example-query/
-	var subscribers = []models.MiniProfile{}
+	var subscribers = []responses.MiniProfile{}
 	if err := configs.Database.WithContext(dbCtx).Model(&reqProfile).Offset(offset).Limit(limit).Order("profile_subscribers.created_at DESC").Where("is_accepted = ?", true).Where("username LIKE ?", regexMatch).Association("Subscribers").Find(&subscribers); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}, err))
 	}
@@ -229,7 +229,7 @@ func GetSubscriptions(c *fiber.Ctx) error {
 	// Get subscriptions(paginated)
 	dbCtx, dbCancel := configs.NewQueryContext()
 	defer dbCancel()
-	var subscriptions = []models.MiniProfile{}
+	var subscriptions = []responses.MiniProfile{}
 	if err := query.WithContext(dbCtx).Order("profile_subscribers.created_at DESC").Limit(limit).Offset(offset).Scan(&subscriptions).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}, err))
 	}
@@ -271,7 +271,7 @@ func GetInvitesSent(c *fiber.Ctx) error {
 	// Get invites sent(paginated)
 	dbCtx, dbCancel := configs.NewQueryContext()
 	defer dbCancel()
-	var invitesSent = []models.MiniProfile{}
+	var invitesSent = []responses.MiniProfile{}
 	if err := query.WithContext(dbCtx).Order("profile_subscribers.created_at DESC").Limit(limit).Offset(offset).Scan(&invitesSent).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}, err))
 	}
@@ -313,7 +313,7 @@ func GetInvitesReceived(c *fiber.Ctx) error {
 	// Get invites sent(paginated)
 	dbCtx, dbCancel := configs.NewQueryContext()
 	defer dbCancel()
-	var invitesReceived = []models.MiniProfile{}
+	var invitesReceived = []responses.MiniProfile{}
 	if err := query.WithContext(dbCtx).Order("profile_subscribers.created_at DESC").Limit(limit).Offset(offset).Scan(&invitesReceived).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}, err))
 	}
@@ -355,7 +355,7 @@ func GetRequestsSent(c *fiber.Ctx) error {
 	// Get requests sent(paginated)
 	dbCtx, dbCancel := configs.NewQueryContext()
 	defer dbCancel()
-	var requestsSent = []models.MiniProfile{}
+	var requestsSent = []responses.MiniProfile{}
 	if err := query.WithContext(dbCtx).Order("profile_subscribers.created_at DESC").Limit(limit).Offset(offset).Scan(&requestsSent).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}, err))
 	}
@@ -397,7 +397,7 @@ func GetRequestsReceived(c *fiber.Ctx) error {
 	// Get requests sent(paginated)
 	dbCtx, dbCancel := configs.NewQueryContext()
 	defer dbCancel()
-	var requestsReceived = []models.MiniProfile{}
+	var requestsReceived = []responses.MiniProfile{}
 	if err := query.WithContext(dbCtx).Order("profile_subscribers.created_at DESC").Limit(limit).Offset(offset).Scan(&requestsReceived).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}, err))
 	}

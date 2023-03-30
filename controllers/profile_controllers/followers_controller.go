@@ -77,7 +77,7 @@ func GetFollowers(c *fiber.Ctx) error {
 	dbCtx, dbCancel := configs.NewQueryContext()
 	defer dbCancel()
 	regexMatch := fmt.Sprintf("%s%%", c.Query("filter")) // for more information on regex matching in sql, visit https://www.freecodecamp.org/news/sql-contains-string-sql-regex-example-query/
-	var followers []models.MiniProfile
+	var followers = []responses.MiniProfile{}
 	if err := configs.Database.WithContext(dbCtx).Model(&models.Profile{Base: models.Base{Id: c.Params("profileId")}}).Offset(offset).Limit(limit).Order("profile_followers.created_at DESC").Where("username LIKE ?", regexMatch).Association("Followers").Find(&followers); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}, err))
 	}
@@ -116,7 +116,7 @@ func GetFollowing(c *fiber.Ctx) error {
 		// Get following(paginated)
 	dbCtx, dbCancel := configs.NewQueryContext()
 	defer dbCancel()
-	var following = []models.MiniProfile{}
+	var following = []responses.MiniProfile{}
 	if err := query.WithContext(dbCtx).Order("profile_followers.created_at DESC").Limit(limit).Offset(offset).Scan(&following).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}, err))
 	}

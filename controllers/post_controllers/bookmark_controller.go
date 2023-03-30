@@ -1,7 +1,6 @@
 package postcontrollers
 
 import (
-	"encoding/json"
 	"math"
 	"strings"
 	"sync"
@@ -48,28 +47,6 @@ type miniPostMedia struct {
 type postsWithMedia struct {
 	postsWithoutMedia
 	Media []miniPostMedia `json:"media"`
-}
-
-type postResponse struct {
-	PostId    string    `json:"post_id"`
-	Title     string    `json:"title" gorm:"column:post_title"`
-	Caption   string    `json:"caption" gorm:"column:post_caption"`
-	CreatedAt time.Time `json:"created_at"`
-
-	ProfileId  string `json:"profile_id"`
-	Username   string `json:"username" gorm:"column:profile_username"`
-	Name       string `json:"name" gorm:"column:profile_name"`
-	MiniAvatar string `json:"mini_avatar" gorm:"column:profile_mini_avatar"`
-
-	Media json.RawMessage `json:"media" gorm:"column:media_data"`
-
-	NumLikes     int `json:"num_likes"`
-	NumDislikes  int `json:"num_dislikes"`
-	NumBookmarks int `json:"num_bookmarks"`
-
-	IsLiked      bool `json:"is_liked"`
-	IsDisliked   bool `json:"is_disliked"`
-	IsBookmarked bool `json:"is_bookmarked"`
 }
 
 func BookmarkPost(c *fiber.Ctx) error {
@@ -122,7 +99,7 @@ func GetBookmarkedPosts(c *fiber.Ctx) error {
 	errChan := make(chan error, 1) // make this buffered so that the goroutine doesn't block
 	wg := new(sync.WaitGroup)
 	wg.Add(1)
-	var bookmarkedPosts = []postResponse{}
+	var bookmarkedPosts = []responses.Post{}
 	go func() {
 		defer wg.Done()
 

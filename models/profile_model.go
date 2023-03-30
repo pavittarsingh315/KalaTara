@@ -59,11 +59,3 @@ func (ps *ProfileSubscriber) BeforeCreate(tx *gorm.DB) error {
 	}
 	return nil
 }
-
-// IMPORTANT: Struct is meant purely for API responses, not any database interactions
-type MiniProfile struct {
-	Id         string `json:"id"`
-	Username   string `json:"username"`
-	Name       string `json:"name"`
-	MiniAvatar string `json:"mini_avatar"`
-}
