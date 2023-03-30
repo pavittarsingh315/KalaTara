@@ -94,19 +94,17 @@ func GetLikesOfPost(c *fiber.Ctx) error {
 	var limit int = c.Locals("limit").(int)
 	var offset int = c.Locals("offset").(int)
 
-	// Get Liked Posts(paginated)
-	var postLikers = []models.MiniProfile{}
-	query := fmt.Sprintf(
-		"SELECT profile.id, profile.username, profile.name, profile.mini_avatar "+
-			"FROM post_likes "+
-			"JOIN profiles as profile "+
-			"ON post_likes.post_id = \"%s\" AND profile.id = post_likes.profile_id "+
-			"ORDER BY post_likes.created_at DESC LIMIT %d OFFSET %d",
-		c.Params("postId"), limit, offset,
-	)
+	query := configs.Database.Table("post_likes").
+		Select("profile.id, profile.username, profile.name, profile.mini_avatar").
+		Joins("JOIN profiles as profile ON post_likes.post_id = ? AND profile.id = post_likes.profile_id", c.Params("postId")).
+		Order("post_likes.created_at DESC").
+		Limit(limit).Offset(offset)
+
+	// Get likers(paginated)
 	dbCtx, dbCancel := configs.NewQueryContext()
 	defer dbCancel()
-	if err := configs.Database.WithContext(dbCtx).Raw(query).Scan(&postLikers).Error; err != nil {
+	var postLikers = []models.MiniProfile{}
+	if err := query.WithContext(dbCtx).Scan(&postLikers).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}, err))
 	}
 
@@ -131,23 +129,21 @@ func GetDislikesOfPost(c *fiber.Ctx) error {
 	var limit int = c.Locals("limit").(int)
 	var offset int = c.Locals("offset").(int)
 
-	// Get Liked Posts(paginated)
-	var postDislikers = []models.MiniProfile{}
-	query := fmt.Sprintf(
-		"SELECT profile.id, profile.username, profile.name, profile.mini_avatar "+
-			"FROM post_dislikes "+
-			"JOIN profiles as profile "+
-			"ON post_dislikes.post_id = \"%s\" AND profile.id = post_dislikes.profile_id "+
-			"ORDER BY post_dislikes.created_at DESC LIMIT %d OFFSET %d",
-		c.Params("postId"), limit, offset,
-	)
+	query := configs.Database.Table("post_dislikes").
+		Select("profile.id, profile.username, profile.name, profile.mini_avatar").
+		Joins("JOIN profiles as profile ON post_dislikes.post_id = ? AND profile.id = post_dislikes.profile_id", c.Params("postId")).
+		Order("post_dislikes.created_at DESC").
+		Limit(limit).Offset(offset)
+
+	// Get dislikers(paginated)
 	dbCtx, dbCancel := configs.NewQueryContext()
 	defer dbCancel()
-	if err := configs.Database.WithContext(dbCtx).Raw(query).Scan(&postDislikers).Error; err != nil {
+	var postDislikers = []models.MiniProfile{}
+	if err := query.WithContext(dbCtx).Scan(&postDislikers).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}, err))
 	}
 
-	// Get total number of likes
+	// Get total number of dislikes
 	var post = models.Post{Base: models.Base{Id: c.Params("postId")}}
 	dbCtx2, dbCancel2 := configs.NewQueryContext()
 	defer dbCancel2()

@@ -104,8 +104,8 @@ func RemoveComment(c *fiber.Ctx) error {
 
 	dbCtx, dbCancel := configs.NewQueryContext()
 	defer dbCancel()
-	query := fmt.Sprintf("DELETE c FROM comments c JOIN posts p ON c.id = \"%s\" AND c.post_id = p.id AND p.profile_id = \"%s\"", c.Params("commentId"), reqProfile.Id)
-	if err := configs.Database.WithContext(dbCtx).Exec(query).Error; err != nil {
+	query := "DELETE FROM comments USING posts WHERE comments.id = ? AND posts.id = comments.post_id AND posts.profile_id = ?"
+	if err := configs.Database.WithContext(dbCtx).Exec(query, c.Params("commentId"), reqProfile.Id).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}, err))
 	}
 
