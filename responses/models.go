@@ -35,3 +35,22 @@ type Post struct {
 	IsDisliked   bool `json:"is_disliked"`
 	IsBookmarked bool `json:"is_bookmarked"`
 }
+
+// Collective representation of a comment, it's owner, and other metadata.
+type Comment struct {
+	CommentId string    `json:"comment_id"`
+	Body      string    `json:"body"`
+	CreatedAt time.Time `json:"created_at"`
+	IsEdited  bool      `json:"is_edited"`
+
+	ProfileId  string `json:"profile_id"`
+	Username   string `json:"username" gorm:"column:profile_username"`
+	MiniAvatar string `json:"mini_avatar" gorm:"column:profile_mini_avatar"`
+
+	NumLikes    int `json:"num_likes"`
+	NumDislikes int `json:"num_dislikes"`
+	NumReplies  int `json:"num_replies"`
+
+	IsLiked    bool `json:"is_liked"`
+	IsDisliked bool `json:"is_disliked"`
+}

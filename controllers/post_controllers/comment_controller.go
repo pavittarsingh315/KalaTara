@@ -1,9 +1,9 @@
 package postcontrollers
 
 import (
-	"fmt"
 	"math"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -190,57 +190,53 @@ func RemoveDislikeFromComment(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusOK).JSON(responses.NewSuccessResponse(fiber.StatusOK, &fiber.Map{"data": "Dislike has been removed."}))
 }
 
-type commentResponseObject struct {
-	CommentId string    `json:"comment_id"`
-	Body      string    `json:"body"`
-	CreatedAt time.Time `json:"created_at"`
-	IsEdited  bool      `json:"is_edited"`
-
-	ProfileId  string `json:"profile_id"`
-	Username   string `json:"username" gorm:"column:profile_username"`
-	MiniAvatar string `json:"mini_avatar" gorm:"column:profile_mini_avatar"`
-
-	NumLikes    int `json:"num_likes"`
-	NumDislikes int `json:"num_dislikes"`
-	NumReplies  int `json:"num_replies"`
-
-	IsLiked    bool `json:"is_liked"`
-	IsDisliked bool `json:"is_disliked"`
-}
-
 func GetComments(c *fiber.Ctx) error {
 	var page int = c.Locals("page").(int)
 	var limit int = c.Locals("limit").(int)
 	var offset int = c.Locals("offset").(int)
 	var reqProfile models.Profile = c.Locals("profile").(models.Profile)
 
-	query := fmt.Sprintf(
-		"SELECT c.id AS comment_id, c.body AS body, c.created_at AS created_at, c.is_edited AS is_edited, "+
-			"p.id AS profile_id, p.username AS profile_username, p.mini_avatar AS profile_mini_avatar, "+
-			"l.num_likes, d.num_dislikes, r.num_replies, "+
-			"(CASE WHEN (SELECT profile_id FROM comment_likes WHERE comment_id = c.id AND profile_id = \"%s\") IS NOT NULL THEN 1 ELSE 0 END) AS is_liked, "+
-			"(CASE WHEN (SELECT profile_id FROM comment_dislikes WHERE comment_id = c.id AND profile_id = \"%s\") IS NOT NULL THEN 1 ELSE 0 END) AS is_disliked "+
-			"FROM comments c "+
-			"JOIN profiles p ON p.id = c.commenter_id AND c.comment_replied_to_id IS NULL AND c.post_id = \"%s\" "+
-			"LEFT JOIN (SELECT comment_id, COUNT(*) AS num_likes FROM comment_likes GROUP by comment_id) l ON c.id = l.comment_id "+
-			"LEFT JOIN (SELECT comment_id, COUNT(*) AS num_dislikes FROM comment_dislikes GROUP by comment_id) d ON c.id = d.comment_id "+
-			"LEFT JOIN (SELECT comment_replied_to_id, COUNT(*) AS num_replies FROM comments GROUP by comment_replied_to_id) r ON c.id = r.comment_replied_to_id "+
-			"ORDER BY c.created_at DESC "+
-			"LIMIT %d OFFSET %d",
-		reqProfile.Id, reqProfile.Id, c.Params("postId"), limit, offset,
-	)
-	var comments = []commentResponseObject{}
-	dbCtx, dbCancel := configs.NewQueryContext()
-	defer dbCancel()
-	if err := configs.Database.WithContext(dbCtx).Raw(query).Scan(&comments).Error; err != nil {
+	// Run both queries concurrently to reduce response time
+	errChan := make(chan error, 1) // make this buffered so that the goroutine doesn't block
+	wg := new(sync.WaitGroup)
+	wg.Add(1)
+	var comments = []responses.Comment{}
+	go func() {
+		defer wg.Done()
+
+		query := "SELECT c.id AS comment_id, c.body AS body, c.created_at AS created_at, c.is_edited AS is_edited, "
+		query += "p.id AS profile_id, p.username AS profile_username, p.mini_avatar AS profile_mini_avatar, "
+		query += "COALESCE(cl.likes, 0) as num_likes, COALESCE(cd.dislikes, 0) as num_dislikes, COALESCE(cr.replies, 0) as num_replies, "
+		query += "(SELECT EXISTS (SELECT 1 FROM comment_likes WHERE comment_id = c.id AND profile_id = ?)) as is_liked, "
+		query += "(SELECT EXISTS (SELECT 1 FROM comment_dislikes WHERE comment_id = c.id AND profile_id = ?)) as is_disliked "
+		query += "FROM comments c "
+		query += "JOIN profiles p ON c.commenter_id = p.id "
+		query += "LEFT JOIN (SELECT comment_id, COUNT(*) as likes FROM comment_likes GROUP BY comment_id) cl ON c.id = cl.comment_id "
+		query += "LEFT JOIN (SELECT comment_id, COUNT(*) as dislikes FROM comment_dislikes GROUP BY comment_id) cd ON c.id = cd.comment_id "
+		query += "LEFT JOIN (SELECT comment_replied_to_id, COUNT(*) as replies FROM comments WHERE comment_replied_to_id IS NOT NULL GROUP BY comment_replied_to_id) cr ON c.id = cr.comment_replied_to_id "
+		query += "WHERE c.post_id = ? AND c.comment_replied_to_id IS NULL "
+		query += "ORDER BY c.created_at DESC "
+		query += "LIMIT ? OFFSET ?;"
+
+		dbCtx, dbCancel := configs.NewQueryContext()
+		defer dbCancel()
+		errChan <- configs.Database.WithContext(dbCtx).Raw(query, reqProfile.Id, reqProfile.Id, c.Params("postId"), limit, offset).Scan(&comments).Error
+	}()
+
+	// Get total number of comments exlcuding replies
+	dbCtx2, dbCancel2 := configs.NewQueryContext()
+	defer dbCancel2()
+	var numComments int64
+	if err := configs.Database.WithContext(dbCtx2).Table("comments").Where("post_id = ? AND comment_replied_to_id IS NULL", c.Params("postId")).Count(&numComments).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}, err))
 	}
 
-	// Get total number of likes
-	var post = models.Post{Base: models.Base{Id: c.Params("postId")}}
-	dbCtx2, dbCancel2 := configs.NewQueryContext()
-	defer dbCancel2()
-	numComments := configs.Database.WithContext(dbCtx2).Model(&post).Association("Comments").Count()
+	wg.Wait()
+
+	if err := <-errChan; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}, err))
+	}
+	close(errChan)
 
 	return c.Status(fiber.StatusOK).JSON(responses.NewSuccessResponse(fiber.StatusOK, &fiber.Map{
 		"data": &fiber.Map{
@@ -258,35 +254,47 @@ func GetReplies(c *fiber.Ctx) error {
 	var offset int = c.Locals("offset").(int)
 	var reqProfile models.Profile = c.Locals("profile").(models.Profile)
 
-	query := fmt.Sprintf(
-		"SELECT c.id AS comment_id, c.body AS body, c.created_at AS created_at, c.is_edited AS is_edited, "+
-			"p.id AS profile_id, p.username AS profile_username, p.mini_avatar AS profile_mini_avatar, "+
-			"l.num_likes, d.num_dislikes, r.num_replies, "+
-			"(CASE WHEN (SELECT profile_id FROM comment_likes WHERE comment_id = c.id AND profile_id = \"%s\") IS NOT NULL THEN 1 ELSE 0 END) AS is_liked, "+
-			"(CASE WHEN (SELECT profile_id FROM comment_dislikes WHERE comment_id = c.id AND profile_id = \"%s\") IS NOT NULL THEN 1 ELSE 0 END) AS is_disliked "+
-			"FROM comments c "+
-			"JOIN profiles p ON p.id = c.commenter_id AND c.comment_replied_to_id = \"%s\" "+
-			"LEFT JOIN (SELECT comment_id, COUNT(*) AS num_likes FROM comment_likes GROUP by comment_id) l ON c.id = l.comment_id "+
-			"LEFT JOIN (SELECT comment_id, COUNT(*) AS num_dislikes FROM comment_dislikes GROUP by comment_id) d ON c.id = d.comment_id "+
-			"LEFT JOIN (SELECT comment_replied_to_id, COUNT(*) AS num_replies FROM comments GROUP by comment_replied_to_id) r ON c.id = r.comment_replied_to_id "+
-			"ORDER BY c.created_at ASC "+
-			"LIMIT %d OFFSET %d",
-		reqProfile.Id, reqProfile.Id, c.Params("commentId"), limit, offset,
-	)
-	var replies = []commentResponseObject{}
-	dbCtx, dbCancel := configs.NewQueryContext()
-	defer dbCancel()
-	if err := configs.Database.WithContext(dbCtx).Raw(query).Scan(&replies).Error; err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}, err))
-	}
+	// Run both queries concurrently to reduce response time
+	errChan := make(chan error, 1) // make this buffered so that the goroutine doesn't block
+	wg := new(sync.WaitGroup)
+	wg.Add(1)
+	var replies = []responses.Comment{}
+	go func() {
+		defer wg.Done()
+
+		query := "SELECT c.id AS comment_id, c.body AS body, c.created_at AS created_at, c.is_edited AS is_edited, "
+		query += "p.id AS profile_id, p.username AS profile_username, p.mini_avatar AS profile_mini_avatar, "
+		query += "COALESCE(cl.likes, 0) as num_likes, COALESCE(cd.dislikes, 0) as num_dislikes, COALESCE(cr.replies, 0) as num_replies, "
+		query += "(SELECT EXISTS (SELECT 1 FROM comment_likes WHERE comment_id = c.id AND profile_id = ?)) as is_liked, "
+		query += "(SELECT EXISTS (SELECT 1 FROM comment_dislikes WHERE comment_id = c.id AND profile_id = ?)) as is_disliked "
+		query += "FROM comments c "
+		query += "JOIN profiles p ON c.commenter_id = p.id "
+		query += "LEFT JOIN (SELECT comment_id, COUNT(*) as likes FROM comment_likes GROUP BY comment_id) cl ON c.id = cl.comment_id "
+		query += "LEFT JOIN (SELECT comment_id, COUNT(*) as dislikes FROM comment_dislikes GROUP BY comment_id) cd ON c.id = cd.comment_id "
+		query += "LEFT JOIN (SELECT comment_replied_to_id, COUNT(*) as replies FROM comments WHERE comment_replied_to_id IS NOT NULL GROUP BY comment_replied_to_id) cr ON c.id = cr.comment_replied_to_id "
+		query += "WHERE c.comment_replied_to_id = ? "
+		query += "ORDER BY c.created_at ASC "
+		query += "LIMIT ? OFFSET ?;"
+
+		dbCtx, dbCancel := configs.NewQueryContext()
+		defer dbCancel()
+		errChan <- configs.Database.WithContext(dbCtx).Raw(query, reqProfile.Id, reqProfile.Id, c.Params("commentId"), limit, offset).Scan(&replies).Error
+	}()
 
 	// Get total number of replies
 	dbCtx2, dbCancel2 := configs.NewQueryContext()
 	defer dbCancel2()
 	var numReplies int64
-	if err := configs.Database.WithContext(dbCtx2).Model(&models.Comment{}).Where("comment_replied_to_id = ?", c.Params("commentId")).Count(&numReplies).Error; err != nil {
+	if err := configs.Database.WithContext(dbCtx2).Table("comments").Where("comment_replied_to_id = ?", c.Params("commentId")).Count(&numReplies).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}, err))
 	}
+
+	wg.Wait()
+
+	if err := <-errChan; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}, err))
+	}
+	close(errChan)
 
 	return c.Status(fiber.StatusOK).JSON(responses.NewSuccessResponse(fiber.StatusOK, &fiber.Map{
 		"data": &fiber.Map{
