@@ -47,7 +47,7 @@ func reactionsRouter(group fiber.Router) {
 	router.Get("/get/dislikes/:postId", middleware.UserAuthHandler, middleware.PaginationHandler, postcontrollers.GetDislikesOfPost)
 
 	router.Get("/liked/get", middleware.UserAuthHandler, middleware.PaginationHandler, postcontrollers.GetLikedPosts)
-	router.Get("/disliked/get", middleware.UserAuthHandler, middleware.PaginationHandler, postcontrollers.GetDisikedPosts)
+	router.Get("/disliked/get", middleware.UserAuthHandler, middleware.PaginationHandler, postcontrollers.GetDislikedPosts)
 }
 
 func bookmarksRouter(group fiber.Router) {
