@@ -53,24 +53,22 @@ func Login(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusUnauthorized).JSON(responses.NewErrorResponse(fiber.StatusUnauthorized, &fiber.Map{"data": message}, nil))
 	}
 
-	// Update last login - because we preloaded the profile in the earlier query, we need to create a query on a "clean" user model so that a profile's username unique constraint isn't violated.
-	dbCtx2, dbCancel2 := configs.NewQueryContext()
-	defer dbCancel2()
-	if err := configs.Database.WithContext(dbCtx2).Model(&models.User{}).Where("id = ?", user.Id).Update("last_login", time.Now()).Error; err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}, err))
-	}
-
 	// Generate auth tokens
 	access, refresh := utils.GenAuthTokens(user.Id)
 
-	// Cache profile
-	cacheCtx, cacheCancel := cache.NewCacheContext()
-	defer cacheCancel()
-	var key = cache.ProfileKey(user.Id)
-	var exp = cache.ProfileExp
-	if err := cache.Set(cacheCtx, key, user.Profile, exp); err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}, err))
-	}
+	go func() {
+		// Update last login - because we preloaded the profile in the earlier query, we need to create a query on a "clean" user model so that a profile's username unique constraint isn't violated.
+		dbCtx2, dbCancel2 := configs.NewQueryContext()
+		defer dbCancel2()
+		_ = configs.Database.WithContext(dbCtx2).Model(&models.User{}).Where("id = ?", user.Id).Update("last_login", time.Now()).Error
+
+		// Cache profile
+		cacheCtx, cacheCancel := cache.NewCacheContext()
+		defer cacheCancel()
+		var key = cache.ProfileKey(user.Id)
+		var exp = cache.ProfileExp
+		_ = cache.Set(cacheCtx, key, user.Profile, exp)
+	}()
 
 	return c.Status(fiber.StatusOK).JSON(
 		responses.NewSuccessResponse(
@@ -138,21 +136,19 @@ func TokenLogin(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusUnauthorized).JSON(responses.NewErrorResponse(fiber.StatusUnauthorized, &fiber.Map{"data": message}, nil))
 	}
 
-	// Update last login - because we preloaded the profile in the earlier query, we need to create a query on a "clean" user model so that a profile's username unique constraint isn't violated.
-	dbCtx2, dbCancel2 := configs.NewQueryContext()
-	defer dbCancel2()
-	if err := configs.Database.WithContext(dbCtx2).Model(&models.User{}).Where("id = ?", user.Id).Update("last_login", time.Now()).Error; err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}, err))
-	}
+	go func() {
+		// Update last login - because we preloaded the profile in the earlier query, we need to create a query on a "clean" user model so that a profile's username unique constraint isn't violated.
+		dbCtx2, dbCancel2 := configs.NewQueryContext()
+		defer dbCancel2()
+		_ = configs.Database.WithContext(dbCtx2).Model(&models.User{}).Where("id = ?", user.Id).Update("last_login", time.Now()).Error
 
-	// Cache profile
-	cacheCtx, cacheCancel := cache.NewCacheContext()
-	defer cacheCancel()
-	var key = cache.ProfileKey(user.Id)
-	var exp = cache.ProfileExp
-	if err := cache.Set(cacheCtx, key, user.Profile, exp); err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}, err))
-	}
+		// Cache profile
+		cacheCtx, cacheCancel := cache.NewCacheContext()
+		defer cacheCancel()
+		var key = cache.ProfileKey(user.Id)
+		var exp = cache.ProfileExp
+		_ = cache.Set(cacheCtx, key, user.Profile, exp)
+	}()
 
 	return c.Status(fiber.StatusOK).JSON(
 		responses.NewSuccessResponse(

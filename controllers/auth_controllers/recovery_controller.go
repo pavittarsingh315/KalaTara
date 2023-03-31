@@ -59,9 +59,16 @@ func RequestPasswordReset(c *fiber.Ctx) error {
 	// Create password reset code in cache
 	cacheCtx2, cacheCancel2 := cache.NewCacheContext()
 	defer cacheCancel2()
-	var code = utils.GenerateRandomCode(6)
+	var code, err = utils.GenerateRandomCode(6)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}, err))
+	}
+	var hash, err2 = utils.HashPassword(code)
+	if err2 != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}, err2))
+	}
 	var exp = cache.PasswordResetCodeEXP
-	if err := cache.Set(cacheCtx2, key, utils.HashPassword(code), exp); err != nil {
+	if err := cache.Set(cacheCtx2, key, hash, exp); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}, err))
 	}
 
@@ -134,6 +141,9 @@ func ConfirmPasswordReset(c *fiber.Ctx) error {
 	if passwordLength < 10 {
 		return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": "Password too short."}, nil))
 	}
+	if length := len(reqBody.Password); length > 64 { // Since the max length password supported by bcrypt is 72 bytes, we check the length of the string in bytes. I made max length 64 to be safe rather than 72.
+		return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": "Password too long."}, nil))
+	}
 
 	reqBody.Contact = strings.ToLower(strings.ReplaceAll(reqBody.Contact, " ", "")) // remove all whitespace and make lowercase
 
@@ -161,7 +171,11 @@ func ConfirmPasswordReset(c *fiber.Ctx) error {
 	// Update password
 	dbCtx, dbCancel := configs.NewQueryContext()
 	defer dbCancel()
-	if err := configs.Database.WithContext(dbCtx).Model(&models.User{}).Where("contact = ?", reqBody.Contact).Update("password", utils.HashPassword(reqBody.Password)).Error; err != nil {
+	var hash, err = utils.HashPassword(reqBody.Password)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}, err))
+	}
+	if err := configs.Database.WithContext(dbCtx).Model(&models.User{}).Where("contact = ?", reqBody.Contact).Update("password", hash).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}, err))
 	}
 
