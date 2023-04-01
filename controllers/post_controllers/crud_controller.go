@@ -1,6 +1,7 @@
 package postcontrollers
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -62,24 +63,10 @@ func CreatePost(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": "Caption is too long."}, nil))
 	}
 
-	newPost := models.Post{
-		ProfileId:          reqProfile.Id,
-		Title:              reqBody.Title,
-		Caption:            reqBody.Caption,
-		ForSubscribersOnly: *reqBody.ForSubscribersOnly,
-		IsArchived:         *reqBody.IsArchived,
-	}
-	dbCtx, dbCancel := configs.NewQueryContext()
-	defer dbCancel()
-	if err := configs.Database.WithContext(dbCtx).Model(&models.Post{}).Create(&newPost).Error; err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}, err))
-	}
-
 	var postMedia = []models.PostMedia{}
 	if len(reqBody.Media) > 0 {
 		for index, mediaObj := range reqBody.Media {
 			postMedia = append(postMedia, models.PostMedia{
-				PostId:   newPost.Id,
 				Position: index,
 				MediaUrl: mediaObj.MediaUrl,
 				IsImage:  *mediaObj.IsImage,
@@ -87,34 +74,41 @@ func CreatePost(c *fiber.Ctx) error {
 				IsAudio:  *mediaObj.IsAudio,
 			})
 		}
-		dbCtx, dbCancel := configs.NewQueryContext()
-		defer dbCancel()
-		if err := configs.Database.WithContext(dbCtx).Model(&models.PostMedia{}).Create(&postMedia).Error; err != nil {
-			return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}, err))
-		}
 	}
 
-	resObj := struct {
-		postsWithoutMedia
-		Media []models.PostMedia `json:"media"`
-	}{
-		postsWithoutMedia: postsWithoutMedia{
-			PostId:       newPost.Id,
-			Title:        newPost.Title,
-			Caption:      newPost.Caption,
-			CreatedAt:    newPost.CreatedAt,
-			ProfileId:    reqProfile.Id,
-			Username:     reqProfile.Username,
-			Name:         reqProfile.Name,
-			MiniAvatar:   reqProfile.MiniAvatar,
-			NumLikes:     0,
-			NumDislikes:  0,
-			NumBookmarks: 0,
-			IsLiked:      false,
-			IsDisliked:   false,
-			IsBookmarked: false,
-		},
-		Media: postMedia,
+	newPost := models.Post{
+		ProfileId:          reqProfile.Id,
+		Title:              reqBody.Title,
+		Caption:            reqBody.Caption,
+		ForSubscribersOnly: *reqBody.ForSubscribersOnly,
+		IsArchived:         *reqBody.IsArchived,
+		Media:              postMedia,
+	}
+	dbCtx, dbCancel := configs.NewQueryContext()
+	defer dbCancel()
+	if err := configs.Database.WithContext(dbCtx).Model(&models.Post{}).Create(&newPost).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}, err))
+	}
+
+	marshaledMedia, _ := json.Marshal(postMedia)
+
+	resObj := responses.Post{
+		PostId:       newPost.Id,
+		Title:        newPost.Title,
+		Caption:      newPost.Caption,
+		CreatedAt:    newPost.CreatedAt,
+		ProfileId:    newPost.ProfileId,
+		Username:     reqProfile.Username,
+		Name:         reqProfile.Name,
+		MiniAvatar:   reqProfile.MiniAvatar,
+		Media:        json.RawMessage(marshaledMedia),
+		NumLikes:     0,
+		NumDislikes:  0,
+		NumBookmarks: 0,
+		NumComments:  0,
+		IsLiked:      false,
+		IsDisliked:   false,
+		IsBookmarked: false,
 	}
 
 	return c.Status(fiber.StatusOK).JSON(responses.NewSuccessResponse(fiber.StatusOK, &fiber.Map{

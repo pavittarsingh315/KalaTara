@@ -30,6 +30,7 @@ type Post struct {
 	NumLikes     int `json:"num_likes"`
 	NumDislikes  int `json:"num_dislikes"`
 	NumBookmarks int `json:"num_bookmarks"`
+	NumComments  int `json:"num_comments"`
 
 	IsLiked      bool `json:"is_liked"`
 	IsDisliked   bool `json:"is_disliked"`
