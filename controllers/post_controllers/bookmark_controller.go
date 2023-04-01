@@ -62,6 +62,7 @@ func GetBookmarkedPosts(c *fiber.Ctx) error {
 		query += "(SELECT COUNT(*) FROM post_likes WHERE post_likes.post_id = posts.id) AS num_likes, "
 		query += "(SELECT COUNT(*) FROM post_dislikes WHERE post_dislikes.post_id = posts.id) AS num_dislikes, "
 		query += "(SELECT COUNT(*) FROM post_bookmarks WHERE post_bookmarks.post_id = posts.id) AS num_bookmarks, "
+		query += "(SELECT COUNT(*) FROM comments WHERE comments.post_id = posts.id) AS num_comments, "
 		query += "EXISTS(SELECT 1 FROM post_likes WHERE post_likes.post_id = posts.id AND post_likes.profile_id = ?) AS is_liked, "
 		query += "EXISTS(SELECT 1 FROM post_dislikes WHERE post_dislikes.post_id = posts.id AND post_dislikes.profile_id = ?) AS is_disliked, "
 		query += "true AS is_bookmarked "
