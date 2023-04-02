@@ -25,6 +25,14 @@ func InitDatabase() {
 		log.Fatalf("Error connecting to database: %v", err)
 	}
 
+	if sqlDb, err := db.DB(); err != nil {
+		log.Fatalf("Error connecting to database: %v", err)
+	} else {
+		sqlDb.SetMaxOpenConns(EnvDbMaxOpenConns())
+		sqlDb.SetMaxIdleConns(EnvDbMaxIdleConns())
+		sqlDb.SetConnMaxLifetime(time.Duration(EnvDbConnMaxLifetime()))
+	}
+
 	log.Println("Database connection established...")
 	log.Println("Running migrations...")
 
