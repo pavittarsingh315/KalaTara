@@ -22,16 +22,14 @@ func InitDatabase() {
 	db, err := gorm.Open(postgres.Open(EnvPostgresDNS()), &gorm.Config{})
 
 	if err != nil {
-		log.Fatal("Error connecting to database...")
-		panic(err)
+		log.Fatalf("Error connecting to database: %v", err)
 	}
 
 	log.Println("Database connection established...")
 	log.Println("Running migrations...")
 
 	if err = setupJoinTables(db); err != nil {
-		log.Fatal("Error during join table setup...")
-		panic(err)
+		log.Fatalf("Error during join table setup: %v", err)
 	}
 
 	if err = db.AutoMigrate(
@@ -43,8 +41,7 @@ func InitDatabase() {
 		&models.Comment{},
 		&models.Notification{},
 	); err != nil {
-		log.Fatal("Error during migration...")
-		panic(err)
+		log.Fatalf("Error during migration: %v", err)
 	}
 
 	log.Println("Migrations ran successfully!")

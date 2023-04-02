@@ -44,7 +44,6 @@ func main() {
 
 	// Launch Application
 	if err := app.Listen(":" + os.Getenv("PORT")); err != nil {
-		log.Fatal("ERROR: app failed to start")
-		panic(err)
+		log.Fatalf("ERROR: app failed to start: %v", err)
 	}
 }

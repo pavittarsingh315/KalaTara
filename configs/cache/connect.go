@@ -22,8 +22,7 @@ const (
 func Initialize() {
 	db, err := strconv.Atoi(configs.EnvRedisDatabase())
 	if err != nil {
-		log.Fatal("Error connecting to Redis...")
-		panic(err)
+		log.Fatalf("Error connecting to Redis: %v", err)
 	}
 
 	rdb = redis.NewClient(&redis.Options{
@@ -37,8 +36,7 @@ func Initialize() {
 	defer cancel()
 	_, err = rdb.Ping(ctx).Result()
 	if err != nil {
-		log.Fatal("Error connecting to cache...")
-		panic(err)
+		log.Fatalf("Error connecting to Redis: %v", err)
 	}
 
 	log.Println("Redis connection established...")
