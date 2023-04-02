@@ -219,26 +219,18 @@ func FinalizeRegistration(c *fiber.Ctx) error {
 		Birthday:  reqBody.Birthday,
 		LastLogin: time.Now(),
 		BanTill:   time.Now(),
+		Profile: models.Profile{
+			Username:   reqBody.Username,
+			Name:       reqBody.Name,
+			Bio:        "🚀🚀🚀🚀🚀🚀🚀🚀",
+			Avatar:     "https://nerajima.s3.us-west-1.amazonaws.com/default.jpg",
+			MiniAvatar: "https://nerajima.s3.us-west-1.amazonaws.com/default.jpg",
+			Birthday:   reqBody.Birthday,
+		},
 	}
 	dbCtx2, dbCancel2 := configs.NewQueryContext()
 	defer dbCancel2()
 	if err := configs.Database.WithContext(dbCtx2).Model(&models.User{}).Create(&newUser).Error; err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}, err))
-	}
-
-	// Create Profile
-	newProfile := models.Profile{
-		UserId:     newUser.Id,
-		Username:   reqBody.Username,
-		Name:       reqBody.Name,
-		Bio:        "🚀🚀🚀🚀🚀🚀🚀🚀",
-		Avatar:     "https://nerajima.s3.us-west-1.amazonaws.com/default.jpg",
-		MiniAvatar: "https://nerajima.s3.us-west-1.amazonaws.com/default.jpg",
-		Birthday:   reqBody.Birthday,
-	}
-	dbCtx3, dbCancel3 := configs.NewQueryContext()
-	defer dbCancel3()
-	if err := configs.Database.WithContext(dbCtx3).Model(&models.Profile{}).Create(&newProfile).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}, err))
 	}
 
@@ -255,7 +247,7 @@ func FinalizeRegistration(c *fiber.Ctx) error {
 	defer cacheCancel3()
 	key = cache.ProfileKey(newUser.Id)
 	var exp = cache.ProfileExp
-	if err := cache.Set(cacheCtx3, key, newProfile, exp); err != nil {
+	if err := cache.Set(cacheCtx3, key, newUser.Profile, exp); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}, err))
 	}
 
@@ -266,7 +258,7 @@ func FinalizeRegistration(c *fiber.Ctx) error {
 				"data": &fiber.Map{
 					"access":  access,
 					"refresh": refresh,
-					"profile": newProfile,
+					"profile": newUser.Profile,
 				},
 			},
 		),
