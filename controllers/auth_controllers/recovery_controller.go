@@ -30,6 +30,10 @@ func RequestPasswordReset(c *fiber.Ctx) error {
 
 	reqBody.Contact = strings.ToLower(strings.ReplaceAll(reqBody.Contact, " ", "")) // remove all whitespace and make lowercase
 
+	if !utils.ValidateEmail(reqBody.Contact) && !utils.ValidatePhone(reqBody.Contact) {
+		return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": "Invalid contact."}, nil))
+	}
+
 	// Check if account exists
 	dbCtx, dbCancel := configs.NewQueryContext()
 	defer dbCancel()

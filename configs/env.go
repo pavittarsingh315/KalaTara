@@ -9,16 +9,19 @@ import (
 )
 
 func InitEnv() {
+	err := godotenv.Load() // will load vars from .env file into ENV for current process
+	if err != nil {
+		log.Fatalf("Error initializing .env file: %v", err)
+	}
+}
+
+// returns the value of the APP_ENV environment variable. Should be either "development" or "production"
+func EnvStatus() string {
 	value, exists := os.LookupEnv("APP_ENV")
 	if !exists {
 		log.Fatal("APP_ENV not set")
 	}
-	if value != "production" {
-		err := godotenv.Load() // will load vars from .env file into ENV for current process
-		if err != nil {
-			log.Fatalf("Error initializing .env file: %v", err)
-		}
-	}
+	return value
 }
 
 func EnvTokenSecrets() (access, refresh string) {

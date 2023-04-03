@@ -37,6 +37,10 @@ func InitiateRegistration(c *fiber.Ctx) error {
 	reqBody.Contact = strings.ToLower(strings.ReplaceAll(reqBody.Contact, " ", ""))   // remove all whitespace and make lowercase
 	reqBody.Username = strings.ToLower(strings.ReplaceAll(reqBody.Username, " ", "")) // remove all whitespace and make lowercase
 
+	if !utils.ValidateEmail(reqBody.Contact) && !utils.ValidatePhone(reqBody.Contact) {
+		return c.Status(fiber.StatusBadRequest).JSON(responses.NewErrorResponse(fiber.StatusBadRequest, &fiber.Map{"data": "Invalid contact."}, nil))
+	}
+
 	// Validate request body lengths
 	usernameLength := uniseg.GraphemeClusterCount(reqBody.Username)
 	nameLength := uniseg.GraphemeClusterCount(reqBody.Name)

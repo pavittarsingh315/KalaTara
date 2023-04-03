@@ -26,7 +26,7 @@ func main() {
 	app.Use(cors.New())
 	app.Use(logger.New())
 	app.Use(recover.New())
-	if os.Getenv("APP_ENV") == "development" {
+	if configs.EnvStatus() == "development" {
 		app.Get("/metrics", monitor.New(monitor.ConfigDefault))
 	}
 

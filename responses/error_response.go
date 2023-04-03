@@ -1,9 +1,8 @@
 package responses
 
 import (
-	"os"
-
 	"github.com/gofiber/fiber/v2"
+	"nerajima.com/NeraJima/configs"
 )
 
 type errorResponse struct {
@@ -19,7 +18,7 @@ func NewErrorResponse(status int, data *fiber.Map, err error) errorResponse {
 	response := errorResponse{}
 	response.Message = "Error"
 	response.Status = status
-	if err != nil && os.Getenv("APP_ENV") == "development" {
+	if err != nil && configs.EnvStatus() == "development" {
 		response.Data = &fiber.Map{"data": err.Error()}
 	} else {
 		response.Data = data
