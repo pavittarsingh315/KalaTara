@@ -24,7 +24,7 @@ func InitRouter(app *fiber.App, hub *ws.Hub) {
 		if websocket.IsWebSocketUpgrade(c) { // Returns true if the client requested upgrade to the WebSocket protocol
 			return c.Next()
 		}
-		return c.SendStatus(fiber.StatusUpgradeRequired)
+		return c.Status(fiber.StatusUpgradeRequired).JSON(responses.NewErrorResponse(fiber.StatusUpgradeRequired, &fiber.Map{"data": "Invalid Protocal Error: websocket upgrade required"}, nil))
 	})
 	WSRouter(ws, hub)
 

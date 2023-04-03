@@ -52,11 +52,11 @@ func (h *Hub) Run() {
 			cl.mu.Unlock()
 		case msg := <-h.broadcast:
 			go func(m *Message) { // run in parallel so we don't block on messages belonging to many users
-				for _, id := range m.To {
+				for _, userId := range m.To {
 					h.mu.Lock()
-					clients, ok := h.clients[id]
+					clients, exists := h.clients[userId]
 					h.mu.Unlock()
-					if !ok {
+					if !exists {
 						continue
 					}
 
@@ -65,7 +65,7 @@ func (h *Hub) Run() {
 						// Check if client is still here because its possible that a client unregisters as message is being broadcasted to them but since they unregistered and their message chan closed, it'll cause a panic.
 						// This prevents that case.
 						h.mu.Lock()
-						_, exists := h.clients[id][client.ConnectionId]
+						_, exists := h.clients[userId][client.ConnectionId]
 						h.mu.Unlock()
 						if !exists {
 							client.mu.Unlock()

@@ -35,8 +35,8 @@ func (c *client) writeMessage() {
 	}()
 
 	for {
-		message, ok := <-c.Message
-		if !ok { // if no message was received
+		message, ok := <-c.Message // this'll block until a message can be read from the channel i.e. this'll block until a message is sent to the channel
+		if !ok {                   // ok will only be false if the channel is closed
 			return
 		}
 
