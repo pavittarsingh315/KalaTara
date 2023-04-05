@@ -173,19 +173,32 @@ func GetLikedPosts(c *fiber.Ctx) error {
 	go func() {
 		defer wg.Done()
 
-		query := "SELECT profiles.id AS profile_id, profiles.username AS profile_username, profiles.name AS profile_name, profiles.mini_avatar AS profile_mini_avatar, "
+		query := "WITH media_agg AS (SELECT post_id, json_agg(json_build_object('media_url', media_url, 'is_image', is_image, 'is_video', is_video, 'is_audio', is_audio) ORDER BY position) AS media_data FROM post_media GROUP BY post_id), "
+		query += "likes_agg AS (SELECT post_id, COUNT(*) AS likes FROM post_likes GROUP BY post_id), "
+		query += "dislikes_agg AS (SELECT post_id, COUNT(*) AS dislikes FROM post_dislikes GROUP BY post_id), "
+		query += "bookmarks_agg AS (SELECT post_id, COUNT(*) AS bookmarks FROM post_bookmarks GROUP BY post_id), "
+		query += "comments_agg AS (SELECT post_id, COUNT(*) AS comments FROM comments GROUP BY post_id) "
+
+		query += "SELECT " // If duplicate records are returned, use SELECT DISTINCT on (posts.id) to remove duplicates instead of just SELECT
+		query += "profiles.id AS profile_id, profiles.username AS profile_username, profiles.name AS profile_name, profiles.mini_avatar AS profile_mini_avatar, "
 		query += "posts.id AS post_id, posts.title AS post_title, posts.caption AS post_caption, posts.created_at AS created_at, "
-		query += "(SELECT json_agg(json_build_object('media_url', m.media_url, 'is_image', m.is_image, 'is_video', m.is_video, 'is_audio', m.is_audio) ORDER BY m.position) FROM post_media m WHERE m.post_id = posts.id) AS media_data, "
-		query += "(SELECT COUNT(*) FROM post_likes WHERE post_likes.post_id = posts.id) AS num_likes, "
-		query += "(SELECT COUNT(*) FROM post_dislikes WHERE post_dislikes.post_id = posts.id) AS num_dislikes, "
-		query += "(SELECT COUNT(*) FROM post_bookmarks WHERE post_bookmarks.post_id = posts.id) AS num_bookmarks, "
-		query += "(SELECT COUNT(*) FROM comments WHERE comments.post_id = posts.id) AS num_comments, "
+		query += "COALESCE(media_agg.media_data, '[]') AS media_data, "
+		query += "COALESCE(likes_agg.likes, 0) AS num_likes, COALESCE(dislikes_agg.dislikes, 0) AS num_dislikes, COALESCE(bookmarks_agg.bookmarks, 0) AS num_bookmarks, COALESCE(comments_agg.comments, 0) AS num_comments, "
 		query += "true AS is_liked, "
-		query += "EXISTS(SELECT 1 FROM post_dislikes WHERE post_dislikes.post_id = posts.id AND post_dislikes.profile_id = ?) AS is_disliked, "
-		query += "EXISTS(SELECT 1 FROM post_bookmarks WHERE post_bookmarks.post_id = posts.id AND post_bookmarks.profile_id = ?) AS is_bookmarked "
+		query += "CASE WHEN pd.profile_id IS NOT NULL THEN true ELSE false END AS is_disliked, "
+		query += "CASE WHEN pb.profile_id IS NOT NULL THEN true ELSE false END AS is_bookmarked "
+
 		query += "FROM posts "
 		query += "JOIN profiles ON posts.profile_id = profiles.id "
 		query += "JOIN post_likes ON post_likes.post_id = posts.id "
+		query += "LEFT JOIN media_agg ON posts.id = media_agg.post_id "
+		query += "LEFT JOIN likes_agg ON posts.id = likes_agg.post_id "
+		query += "LEFT JOIN dislikes_agg ON posts.id = dislikes_agg.post_id "
+		query += "LEFT JOIN bookmarks_agg ON posts.id = bookmarks_agg.post_id "
+		query += "LEFT JOIN comments_agg ON posts.id = comments_agg.post_id "
+		query += "LEFT JOIN post_dislikes pd ON posts.id = pd.post_id AND pd.profile_id = ? "
+		query += "LEFT JOIN post_bookmarks pb ON posts.id = pb.post_id AND pb.profile_id = ? "
+
 		query += "WHERE post_likes.profile_id = ? AND posts.is_archived = false "
 		query += "ORDER BY post_likes.created_at DESC "
 		query += "LIMIT ? OFFSET ?;"
@@ -233,19 +246,32 @@ func GetDislikedPosts(c *fiber.Ctx) error {
 	go func() {
 		defer wg.Done()
 
-		query := "SELECT profiles.id AS profile_id, profiles.username AS profile_username, profiles.name AS profile_name, profiles.mini_avatar AS profile_mini_avatar, "
+		query := "WITH media_agg AS (SELECT post_id, json_agg(json_build_object('media_url', media_url, 'is_image', is_image, 'is_video', is_video, 'is_audio', is_audio) ORDER BY position) AS media_data FROM post_media GROUP BY post_id), "
+		query += "likes_agg AS (SELECT post_id, COUNT(*) AS likes FROM post_likes GROUP BY post_id), "
+		query += "dislikes_agg AS (SELECT post_id, COUNT(*) AS dislikes FROM post_dislikes GROUP BY post_id), "
+		query += "bookmarks_agg AS (SELECT post_id, COUNT(*) AS bookmarks FROM post_bookmarks GROUP BY post_id), "
+		query += "comments_agg AS (SELECT post_id, COUNT(*) AS comments FROM comments GROUP BY post_id) "
+
+		query += "SELECT " // If duplicate records are returned, use SELECT DISTINCT on (posts.id) to remove duplicates instead of just SELECT
+		query += "profiles.id AS profile_id, profiles.username AS profile_username, profiles.name AS profile_name, profiles.mini_avatar AS profile_mini_avatar, "
 		query += "posts.id AS post_id, posts.title AS post_title, posts.caption AS post_caption, posts.created_at AS created_at, "
-		query += "(SELECT json_agg(json_build_object('media_url', m.media_url, 'is_image', m.is_image, 'is_video', m.is_video, 'is_audio', m.is_audio) ORDER BY m.position) FROM post_media m WHERE m.post_id = posts.id) AS media_data, "
-		query += "(SELECT COUNT(*) FROM post_likes WHERE post_likes.post_id = posts.id) AS num_likes, "
-		query += "(SELECT COUNT(*) FROM post_dislikes WHERE post_dislikes.post_id = posts.id) AS num_dislikes, "
-		query += "(SELECT COUNT(*) FROM post_bookmarks WHERE post_bookmarks.post_id = posts.id) AS num_bookmarks, "
-		query += "(SELECT COUNT(*) FROM comments WHERE comments.post_id = posts.id) AS num_comments, "
-		query += "EXISTS(SELECT 1 FROM post_likes WHERE post_likes.post_id = posts.id AND post_likes.profile_id = ?) AS is_liked, "
+		query += "COALESCE(media_agg.media_data, '[]') AS media_data, "
+		query += "COALESCE(likes_agg.likes, 0) AS num_likes, COALESCE(dislikes_agg.dislikes, 0) AS num_dislikes, COALESCE(bookmarks_agg.bookmarks, 0) AS num_bookmarks, COALESCE(comments_agg.comments, 0) AS num_comments, "
+		query += "CASE WHEN pl.profile_id IS NOT NULL THEN true ELSE false END AS is_liked, "
 		query += "true AS is_disliked, "
-		query += "EXISTS(SELECT 1 FROM post_bookmarks WHERE post_bookmarks.post_id = posts.id AND post_bookmarks.profile_id = ?) AS is_bookmarked "
+		query += "CASE WHEN pb.profile_id IS NOT NULL THEN true ELSE false END AS is_bookmarked "
+
 		query += "FROM posts "
 		query += "JOIN profiles ON posts.profile_id = profiles.id "
 		query += "JOIN post_dislikes ON post_dislikes.post_id = posts.id "
+		query += "LEFT JOIN media_agg ON posts.id = media_agg.post_id "
+		query += "LEFT JOIN likes_agg ON posts.id = likes_agg.post_id "
+		query += "LEFT JOIN dislikes_agg ON posts.id = dislikes_agg.post_id "
+		query += "LEFT JOIN bookmarks_agg ON posts.id = bookmarks_agg.post_id "
+		query += "LEFT JOIN comments_agg ON posts.id = comments_agg.post_id "
+		query += "LEFT JOIN post_likes pl ON posts.id = pl.post_id AND pl.profile_id = ? "
+		query += "LEFT JOIN post_bookmarks pb ON posts.id = pb.post_id AND pb.profile_id = ? "
+
 		query += "WHERE post_dislikes.profile_id = ? AND posts.is_archived = false "
 		query += "ORDER BY post_dislikes.created_at DESC "
 		query += "LIMIT ? OFFSET ?;"
