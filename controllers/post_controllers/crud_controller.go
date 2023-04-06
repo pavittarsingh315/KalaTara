@@ -192,11 +192,9 @@ func EditPost(c *fiber.Ctx) error {
 	}
 
 	// Update the fields
-	var base = models.Base{Id: c.Params("postId")}
-	var post = models.Post{Base: base, ProfileId: reqProfile.Id}
 	dbCtx, dbCancel := configs.NewQueryContext()
 	defer dbCancel()
-	if err := configs.Database.WithContext(dbCtx).Model(&post).Updates(map[string]interface{}{"title": reqBody.Title, "caption": reqBody.Caption, "is_archived": *reqBody.IsArchived}).Error; err != nil {
+	if err := configs.Database.WithContext(dbCtx).Model(&models.Post{}).Where("id = ? AND profile_id = ?", c.Params("postId"), reqProfile.Id).Updates(map[string]interface{}{"title": reqBody.Title, "caption": reqBody.Caption, "is_archived": *reqBody.IsArchived}).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}, err))
 	}
 
