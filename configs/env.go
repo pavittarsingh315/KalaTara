@@ -15,13 +15,16 @@ func InitEnv() {
 	}
 }
 
-// returns the value of the APP_ENV environment variable. Should be either "development" or "production"
-func EnvStatus() string {
+// returns true if app is in production mode
+func EnvProdActive() bool {
 	value, exists := os.LookupEnv("APP_ENV")
 	if !exists {
 		log.Fatal("APP_ENV not set")
 	}
-	return value
+	if value != "production" && value != "development" {
+		log.Fatalf("APP_ENV must be either \"production\" or \"development\"")
+	}
+	return value == "production"
 }
 
 func EnvTokenSecrets() (access, refresh string) {

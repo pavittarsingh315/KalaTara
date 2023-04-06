@@ -33,14 +33,22 @@ func InitDatabase() {
 		sqlDb.SetConnMaxLifetime(time.Duration(EnvDbConnMaxLifetime()))
 	}
 
+	if !EnvProdActive() {
+		migrate(db)
+	}
+
+	Database = db
+}
+
+func migrate(db *gorm.DB) {
 	log.Println("Database connection established...")
 	log.Println("Running migrations...")
 
-	if err = setupJoinTables(db); err != nil {
+	if err := setupJoinTables(db); err != nil {
 		log.Fatalf("Error during join table setup: %v", err)
 	}
 
-	if err = db.AutoMigrate(
+	if err := db.AutoMigrate(
 		&models.User{},
 		&models.Profile{},
 		&models.SearchHistory{},
@@ -53,8 +61,6 @@ func InitDatabase() {
 	}
 
 	log.Println("Migrations ran successfully!")
-
-	Database = db
 }
 
 func setupJoinTables(db *gorm.DB) error {

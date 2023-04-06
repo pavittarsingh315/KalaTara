@@ -18,7 +18,7 @@ func NewErrorResponse(status int, data *fiber.Map, err error) errorResponse {
 	response := errorResponse{}
 	response.Message = "Error"
 	response.Status = status
-	if err != nil && configs.EnvStatus() == "development" {
+	if err != nil && !configs.EnvProdActive() {
 		response.Data = &fiber.Map{"data": err.Error()}
 	} else {
 		response.Data = data
