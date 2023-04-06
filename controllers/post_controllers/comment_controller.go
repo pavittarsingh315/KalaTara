@@ -73,11 +73,9 @@ func EditComment(c *fiber.Ctx) error {
 	}
 
 	// Update the fields
-	var base = models.Base{Id: c.Params("commentId")}
-	var comment = models.Comment{Base: base, CommenterId: reqProfile.Id}
 	dbCtx, dbCancel := configs.NewQueryContext()
 	defer dbCancel()
-	if err := configs.Database.WithContext(dbCtx).Model(&comment).Updates(map[string]interface{}{"is_edited": true, "body": reqBody.Body}).Error; err != nil {
+	if err := configs.Database.WithContext(dbCtx).Model(&models.Comment{}).Where("id = ? AND commenter_id = ?", c.Params("commentId"), reqProfile.Id).Updates(map[string]interface{}{"is_edited": true, "body": reqBody.Body}).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(responses.NewErrorResponse(fiber.StatusInternalServerError, &fiber.Map{"data": "Unexpected Error. Please try again."}, err))
 	}
 

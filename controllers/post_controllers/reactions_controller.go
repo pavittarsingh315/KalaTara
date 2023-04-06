@@ -109,10 +109,9 @@ func GetLikesOfPost(c *fiber.Ctx) error {
 	}
 
 	// Get total number of likes
-	var post = models.Post{Base: models.Base{Id: c.Params("postId")}}
 	dbCtx2, dbCancel2 := configs.NewQueryContext()
 	defer dbCancel2()
-	numLikes := configs.Database.WithContext(dbCtx2).Model(&post).Association("Likes").Count()
+	numLikes := configs.Database.WithContext(dbCtx2).Model(&models.Post{}).Where("id = ?", c.Params("postId")).Association("Likes").Count()
 
 	return c.Status(fiber.StatusOK).JSON(responses.NewSuccessResponse(fiber.StatusOK, &fiber.Map{
 		"data": &fiber.Map{
@@ -144,10 +143,9 @@ func GetDislikesOfPost(c *fiber.Ctx) error {
 	}
 
 	// Get total number of dislikes
-	var post = models.Post{Base: models.Base{Id: c.Params("postId")}}
 	dbCtx2, dbCancel2 := configs.NewQueryContext()
 	defer dbCancel2()
-	numDislikes := configs.Database.WithContext(dbCtx2).Model(&post).Association("Dislikes").Count()
+	numDislikes := configs.Database.WithContext(dbCtx2).Model(&models.Post{}).Where("id = ?", c.Params("postId")).Association("Dislikes").Count()
 
 	return c.Status(fiber.StatusOK).JSON(responses.NewSuccessResponse(fiber.StatusOK, &fiber.Map{
 		"data": &fiber.Map{
