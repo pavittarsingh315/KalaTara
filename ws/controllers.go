@@ -1,6 +1,7 @@
 package ws
 
 import (
+	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/websocket/v2"
 	"github.com/google/uuid"
 	"nerajima.com/NeraJima/models"
@@ -9,6 +10,12 @@ import (
 // Connect client to ws hub
 func (h *Hub) Connect(c *websocket.Conn) {
 	var reqProfile models.Profile = c.Locals("profile").(models.Profile)
+
+	if len(h.clients[reqProfile.UserId]) >= maxNumberOfDevices {
+		c.WriteJSON(&fiber.Map{"error": "You have reached the maximum number of devices you can connect to the server from. Please disconnect from one of your other devices and try again"})
+		c.Close()
+		return
+	}
 
 	cl := &client{
 		ConnectionId: uuid.New(),

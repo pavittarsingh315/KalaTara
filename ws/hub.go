@@ -6,12 +6,14 @@ import (
 	"github.com/google/uuid"
 )
 
+const maxNumberOfDevices = 3 // since a user can connect to the ws server via multiple devices, we need to limit the number of devices
+
 type Hub struct {
 	// Map of all the connected clients via websockets
 	//
 	// Key: user id
 	//
-	// Value: list of clients associated with one user i.e. a user connected to the server via multiple devices
+	// Value: map of connected devices, i.e. clients, associated with one user
 	clients    map[string]map[uuid.UUID]*client
 	register   chan *client
 	unregister chan *client

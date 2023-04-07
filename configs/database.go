@@ -23,6 +23,8 @@ func InitDatabase() {
 
 	if err != nil {
 		log.Fatalf("Error connecting to database: %v", err)
+	} else if db.Error != nil {
+		log.Fatalf("Error connecting to database: %v", db.Error)
 	}
 
 	if sqlDb, err := db.DB(); err != nil {
@@ -31,7 +33,14 @@ func InitDatabase() {
 		sqlDb.SetMaxOpenConns(EnvDbMaxOpenConns())
 		sqlDb.SetMaxIdleConns(EnvDbMaxIdleConns())
 		sqlDb.SetConnMaxLifetime(time.Duration(EnvDbConnMaxLifetime()))
+		ctx, cancel := NewQueryContext()
+		defer cancel()
+		if err := sqlDb.PingContext(ctx); err != nil {
+			log.Fatalf("Error pinging database: %v", err)
+		}
 	}
+
+	log.Println("Database connection established...")
 
 	if !EnvProdActive() {
 		migrate(db)
@@ -41,7 +50,6 @@ func InitDatabase() {
 }
 
 func migrate(db *gorm.DB) {
-	log.Println("Database connection established...")
 	log.Println("Running migrations...")
 
 	if err := setupJoinTables(db); err != nil {
