@@ -11,7 +11,10 @@ import (
 func (h *Hub) Connect(c *websocket.Conn) {
 	var reqProfile models.Profile = c.Locals("profile").(models.Profile)
 
-	if len(h.clients[reqProfile.UserId]) >= maxNumberOfDevices {
+	h.mu.Lock()
+	numDevices := len(h.clients[reqProfile.UserId])
+	h.mu.Unlock()
+	if numDevices >= maxNumberOfDevices {
 		c.WriteJSON(&fiber.Map{"error": "You have reached the maximum number of devices you can connect to the server from. Please disconnect from one of your other devices and try again"})
 		c.Close()
 		return
