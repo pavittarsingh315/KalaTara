@@ -15,10 +15,8 @@ type errorResponse struct {
 //
 // You can pass nil for the error if you want to return the data as the error response body.
 func NewErrorResponse(status int, data *fiber.Map, err error) errorResponse {
-	response := errorResponse{}
-	response.Message = "Error"
-	response.Status = status
-	if err != nil && !configs.EnvProdActive() {
+	response := errorResponse{Message: "Error", Status: status}
+	if err != nil && !configs.EnvProdActive() { // err can be nil therefore this check is needed
 		response.Data = &fiber.Map{"data": err.Error()}
 	} else {
 		response.Data = data

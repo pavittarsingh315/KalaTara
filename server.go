@@ -9,6 +9,7 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/gofiber/fiber/v2/middleware/monitor"
 	"github.com/gofiber/fiber/v2/middleware/recover"
+	"github.com/gofiber/fiber/v2/middleware/requestid"
 	"github.com/gofiber/helmet/v2"
 	"nerajima.com/NeraJima/configs"
 	"nerajima.com/NeraJima/configs/cache"
@@ -24,11 +25,12 @@ func main() {
 	// Middleware
 	app.Use(helmet.New())
 	app.Use(cors.New())
-	app.Use(logger.New())
 	app.Use(recover.New())
+	app.Use(requestid.New())
 	if !configs.EnvProdActive() {
 		app.Get("/metrics", monitor.New(monitor.ConfigDefault))
 	}
+	app.Use(logger.New())
 
 	configs.InitDatabase()
 	cache.Initialize()

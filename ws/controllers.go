@@ -30,5 +30,5 @@ func (h *Hub) Connect(c *websocket.Conn) {
 	h.register <- cl
 
 	go cl.writeMessage()
-	cl.readMessage(h) // we don't run this in a go routine cause fiber spawns a goroutine for each request therefore this func runs in the goroutine spawned by fiber for each instance of the request
+	cl.readMessage(h) // we don't run this in a goroutine because we want to block the thread until the client disconnects. if this was run in a goroutine, the thread would exit and the client would be disconnected
 }
