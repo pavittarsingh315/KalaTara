@@ -1,5 +1,9 @@
+IMPORTANT TASKS:
+   1. DO NOT PUT THIS OFF. Convert the application to hex-arch: https://www.youtube.com/watch?v=MpFog2kZsHk
+
 TODOS:
    1. Consider changing the id field on the models to UUID rather than string representation of UUID
+   2. Think about incorporating this package into the application: https://github.com/gammazero/workerpool
 
 GOOD IDEAS:
    1. Caching User and Profile as one object in Redis:
